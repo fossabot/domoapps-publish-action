@@ -1,7 +1,7 @@
 {
   "name": "domo-publish-action",
   "version": "1.0.0",
-  "description": "GitHub Action for deploying Domo apps using domo CLI",
+  "description": "GitHub Action for deploying Domo apps to Domo instances",
   "main": "dist/index.js",
   "scripts": {
     "build": "ncc build src/index.js -o dist",
@@ -16,7 +16,7 @@
     "deployment",
     "domo-cli"
   ],
-  "author": "Your Name",
+  "author": "Domo Developer Innovations",
   "license": "MIT",
   "dependencies": {
     "@actions/core": "^1.10.0",

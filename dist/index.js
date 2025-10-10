@@ -25658,7 +25658,7 @@ async function authenticateDomo(domoToken, domoInstance) {
 }
 
 module.exports = {
-  authenticateDomo
+  authenticateDomo,
 };
 
 
@@ -25681,7 +25681,7 @@ function changeDirectory(workingDirectory) {
 }
 
 module.exports = {
-  changeDirectory
+  changeDirectory,
 };
 
 
@@ -25702,7 +25702,7 @@ async function publishAppStep(appPath, domoInstance) {
 }
 
 module.exports = {
-  publishAppStep
+  publishAppStep,
 };
 
 
@@ -25734,7 +25734,7 @@ async function runBuild(buildCommand) {
 }
 
 module.exports = {
-  runBuild
+  runBuild,
 };
 
 
@@ -25743,7 +25743,10 @@ module.exports = {
 /***/ 4015:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-const { ensurePackageManager, installDependencies } = __nccwpck_require__(9260);
+const {
+  ensurePackageManager,
+  installDependencies,
+} = __nccwpck_require__(9260);
 const { ensureRyuuInstalled } = __nccwpck_require__(6313);
 
 /**
@@ -25761,7 +25764,7 @@ async function setupEnvironment() {
 }
 
 module.exports = {
-  setupEnvironment
+  setupEnvironment,
 };
 
 
@@ -25794,7 +25797,7 @@ function validateInputs(domoToken, domoInstance) {
 }
 
 module.exports = {
-  validateInputs
+  validateInputs,
 };
 
 
@@ -25812,9 +25815,7 @@ const core = __nccwpck_require__(7484);
  * @returns {string} The instance name
  */
 function extractInstanceName(domoInstance) {
-  return domoInstance
-    .replace(/^https?:\/\//, '')
-    .replace(/\/$/, '');
+  return domoInstance.replace(/^https?:\/\//, '').replace(/\/$/, '');
 }
 
 /**
@@ -25839,9 +25840,9 @@ async function ensureRyuuInstalled() {
  */
 async function authenticateWithDomo(domoToken, domoInstance) {
   core.info('🔐 Adding Domo token and authenticating...');
-  
+
   const instanceName = extractInstanceName(domoInstance);
-  
+
   // Add token to domo CLI
   const addTokenCommand = `domo token -i ${instanceName} -t ${domoToken} add`;
   await exec.exec('bash', ['-c', addTokenCommand]);
@@ -25860,11 +25861,11 @@ async function authenticateWithDomo(domoToken, domoInstance) {
  */
 async function publishApp(appPath, domoInstance) {
   core.info('📤 Publishing app to Domo...');
-  
+
   const publishCommand = `domo publish "${appPath}"`;
   await exec.exec('bash', ['-c', publishCommand]);
   core.info('✅ App published successfully');
-  
+
   // Set outputs
   core.setOutput('deployment-status', 'success');
   core.setOutput('app-url', `${domoInstance}/app/${appPath}`);
@@ -25874,7 +25875,7 @@ module.exports = {
   extractInstanceName,
   ensureRyuuInstalled,
   authenticateWithDomo,
-  publishApp
+  publishApp,
 };
 
 
@@ -25908,7 +25909,7 @@ function detectPackageManager() {
 async function ensurePackageManager() {
   try {
     const packageManager = detectPackageManager();
-    
+
     if (packageManager === 'pnpm') {
       core.info('📦 Detected pnpm lock file, ensuring pnpm is available...');
       try {
@@ -25932,7 +25933,7 @@ async function ensurePackageManager() {
     } else {
       core.info('📦 Using npm (default package manager)');
     }
-    
+
     return packageManager;
   } catch (error) {
     core.warning(`⚠️ Could not detect package manager: ${error.message}`);
@@ -25959,7 +25960,7 @@ async function installDependencies() {
 
     const packageManager = detectPackageManager();
     core.info('📦 Installing dependencies...');
-    
+
     if (packageManager === 'pnpm') {
       await exec.exec('pnpm', ['install', '--frozen-lockfile']);
     } else if (packageManager === 'yarn') {
@@ -25971,7 +25972,7 @@ async function installDependencies() {
         await exec.exec('npm', ['install']);
       }
     }
-    
+
     core.info('✅ Dependencies installed successfully');
   } catch (error) {
     core.warning(`⚠️ Could not install dependencies: ${error.message}`);
@@ -25981,7 +25982,7 @@ async function installDependencies() {
 module.exports = {
   detectPackageManager,
   ensurePackageManager,
-  installDependencies
+  installDependencies,
 };
 
 
