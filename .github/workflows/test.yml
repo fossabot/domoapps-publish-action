@@ -37,7 +37,7 @@ jobs:
           # Test that the action can be built and runs without errors
           node dist/index.js
         env:
-          INPUT_DOMO-TOKEN: ${{ secrets.DOMO_TOKEN }}
-          INPUT_DOMO-INSTANCE: https://test.domo.com
-          INPUT_BUILD-COMMAND: echo "test build"
-          INPUT_WORKING-DIRECTORY: .
+          INPUT_DOMO_TOKEN: fake-token-for-testing-12345
+          INPUT_DOMO_INSTANCE: https://test.domo.com
+          INPUT_BUILD_COMMAND: echo "test build"
+          INPUT_WORKING_DIRECTORY: .
