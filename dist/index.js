@@ -27668,24 +27668,6 @@ async function run() {
     // Install dependencies if package.json exists
     await installDependencies();
 
-    // Run build command if provided (before changing directory)
-    if (buildCommand) {
-      core.info(`🔨 Running build command: ${buildCommand}`);
-      try {
-        await exec.exec('bash', ['-c', buildCommand]);
-        core.info('✅ Build completed successfully');
-      } catch (error) {
-        core.setFailed(`❌ Build failed: ${error.message}`);
-        return;
-      }
-    }
-
-    // Change to working directory (after build, so the directory exists)
-    if (workingDirectory !== '.') {
-      core.info(`📂 Changing to working directory: ${workingDirectory}`);
-      process.chdir(workingDirectory);
-    }
-
     // Install ryuu if not already installed
     core.info('📦 Checking for ryuu installation...');
     try {
@@ -27697,7 +27679,7 @@ async function run() {
       core.info('✅ ryuu installed successfully');
     }
 
-    // Add Domo token and login
+    // Add Domo token and login (before build, in case build needs Domo access)
     core.info('🔐 Adding Domo token and authenticating...');
     try {
       // Extract instance name from URL (e.g., https://company.domo.com -> company.domo.com)
@@ -27717,6 +27699,24 @@ async function run() {
     } catch (error) {
       core.setFailed(`❌ Failed to authenticate with Domo: ${error.message}`);
       return;
+    }
+
+    // Run build command if provided (after authentication, in case it needs Domo access)
+    if (buildCommand) {
+      core.info(`🔨 Running build command: ${buildCommand}`);
+      try {
+        await exec.exec('bash', ['-c', buildCommand]);
+        core.info('✅ Build completed successfully');
+      } catch (error) {
+        core.setFailed(`❌ Build failed: ${error.message}`);
+        return;
+      }
+    }
+
+    // Change to working directory (after build, so the directory exists)
+    if (workingDirectory !== '.') {
+      core.info(`📂 Changing to working directory: ${workingDirectory}`);
+      process.chdir(workingDirectory);
     }
 
     // Publish the app
