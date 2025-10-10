@@ -7,7 +7,7 @@
     "build": "ncc build src/index.js -o dist",
     "test": "jest",
     "lint": "eslint src/**/*.js",
-    "prepare": "npm run build"
+    "prepare": "pnpm run build"
   },
   "keywords": [
     "github-action",
@@ -22,7 +22,7 @@
     "@actions/exec": "^1.1.1",
     "@actions/github": "^6.0.0",
     "@actions/io": "^1.1.2",
-    "ryuu": "^1.0.0"
+    "ryuu": "^4.4.14"
   },
   "devDependencies": {
     "@vercel/ncc": "^0.38.0",

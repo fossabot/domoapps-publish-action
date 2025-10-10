@@ -6,10 +6,12 @@ async function run() {
     // Get inputs
     const domoToken = core.getInput('domo-token', { required: true });
     const domoInstance = core.getInput('domo-instance', { required: true });
-    const appPath = core.getInput('app-path', { required: true });
     const buildCommand = core.getInput('build-command', { required: false });
     const workingDirectory =
       core.getInput('working-directory', { required: false }) || '.';
+
+    // The app path is determined by the working directory
+    const appPath = workingDirectory;
 
     // Validate inputs
     if (!domoInstance || !domoInstance.includes('domo.com')) {

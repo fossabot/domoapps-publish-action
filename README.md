@@ -28,11 +28,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Deploy to Domo
-        uses: your-username/domo-publish-action@v1
+        uses: DomoApps/domoapps-publish-action@v1
         with:
-          domo-token: ${{ secrets.DOMO_TOKEN }}
+          domo-token: ${{ secrets.DOMO_ACCESS_TOKEN }}
           domo-instance: https://your-company.domo.com
-          app-path: ./my-domo-app
 ```
 
 ### With Build Command
@@ -51,11 +50,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Deploy to Domo
-        uses: your-username/domo-publish-action@v1
+        uses: DomoApps/domoapps-publish-action@v1
         with:
-          domo-token: ${{ secrets.DOMO_TOKEN }}
+          domo-token: ${{ secrets.DOMO_ACCESS_TOKEN }}
           domo-instance: https://your-company.domo.com
-          app-path: ./my-domo-app
           build-command: npm run build
           working-directory: ./my-domo-app
 ```
@@ -66,7 +64,6 @@ jobs:
 | ------------------- | --------------------------------------------------------- | -------- | ------- |
 | `domo-token`        | Domo API token for authentication                         | ✅       | -       |
 | `domo-instance`     | Domo instance URL (e.g., `https://your-company.domo.com`) | ✅       | -       |
-| `app-path`          | Path to the Domo app directory                            | ✅       | `.`     |
 | `build-command`     | Optional build command to run before deployment           | ❌       | -       |
 | `working-directory` | Working directory for the action                          | ❌       | `.`     |
 
@@ -90,7 +87,7 @@ jobs:
 
 Add the following secrets to your repository:
 
-- `DOMO_TOKEN`: Your Domo API token
+- `DOMO_ACCESS_TOKEN`: Your Domo API token
 - (Optional) `DOMO_INSTANCE`: Your Domo instance URL if you want to use it as a secret
 
 ### 3. Create Your Domo App
@@ -198,11 +195,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Deploy to Staging
-        uses: your-username/domo-publish-action@v1
+        uses: DomoApps/domoapps-publish-action@v1
         with:
-          domo-token: ${{ secrets.DOMO_STAGING_TOKEN }}
+          domo-token: ${{ secrets.DOMO_STAGING_ACCESS_TOKEN }}
           domo-instance: https://staging.domo.com
-          app-path: ./my-domo-app
 
   deploy-production:
     runs-on: ubuntu-latest
@@ -212,11 +208,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Deploy to Production
-        uses: your-username/domo-publish-action@v1
+        uses: DomoApps/domoapps-publish-action@v1
         with:
           domo-token: ${{ secrets.DOMO_PRODUCTION_TOKEN }}
           domo-instance: https://your-company.domo.com
-          app-path: ./my-domo-app
 ```
 
 ### With Custom Build Process
@@ -244,11 +239,10 @@ jobs:
         run: npm ci
 
       - name: Deploy to Domo
-        uses: your-username/domo-publish-action@v1
+        uses: DomoApps/domoapps-publish-action@v1
         with:
-          domo-token: ${{ secrets.DOMO_TOKEN }}
+          domo-token: ${{ secrets.DOMO_ACCESS_TOKEN }}
           domo-instance: https://your-company.domo.com
-          app-path: ./dist
           build-command: npm run build
           working-directory: .
 ```
@@ -277,9 +271,9 @@ The action automatically handles the instance name extraction from the full Domo
    - Ensure the build command is valid for your environment
    - Check that all required dependencies are installed
 
-3. **App Path Not Found**
-   - Verify the app-path points to a valid Domo app directory
-   - Ensure the directory contains a valid `manifest.json`
+3. **Manifest Not Found**
+   - Ensure the working directory contains a valid `manifest.json`
+   - Verify the manifest has the correct `id` field for your Domo asset
 
 ### Debug Mode
 

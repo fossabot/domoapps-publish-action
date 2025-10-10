@@ -10,10 +10,6 @@ inputs:
   domo-instance:
     description: 'Domo instance URL (e.g., https://your-company.domo.com)'
     required: true
-  app-path:
-    description: 'Path to the Domo app directory'
-    required: true
-    default: '.'
   build-command:
     description: 'Optional build command to run before deployment'
     required: false
