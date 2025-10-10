@@ -25643,6 +25643,350 @@ module.exports = {
 
 /***/ }),
 
+/***/ 505:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const { authenticateWithDomo } = __nccwpck_require__(6313);
+
+/**
+ * Authenticates with Domo
+ * @param {string} domoToken - The Domo API token
+ * @param {string} domoInstance - The Domo instance URL
+ */
+async function authenticateDomo(domoToken, domoInstance) {
+  await authenticateWithDomo(domoToken, domoInstance);
+}
+
+module.exports = {
+  authenticateDomo
+};
+
+
+/***/ }),
+
+/***/ 7126:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const core = __nccwpck_require__(7484);
+
+/**
+ * Changes to the working directory if needed
+ * @param {string} workingDirectory - The working directory path
+ */
+function changeDirectory(workingDirectory) {
+  if (workingDirectory !== '.') {
+    core.info(`📂 Changing to working directory: ${workingDirectory}`);
+    process.chdir(workingDirectory);
+  }
+}
+
+module.exports = {
+  changeDirectory
+};
+
+
+/***/ }),
+
+/***/ 2687:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const { publishApp } = __nccwpck_require__(6313);
+
+/**
+ * Publishes the app to Domo
+ * @param {string} appPath - The path to the app
+ * @param {string} domoInstance - The Domo instance URL
+ */
+async function publishAppStep(appPath, domoInstance) {
+  await publishApp(appPath, domoInstance);
+}
+
+module.exports = {
+  publishAppStep
+};
+
+
+/***/ }),
+
+/***/ 8338:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const exec = __nccwpck_require__(5236);
+const core = __nccwpck_require__(7484);
+
+/**
+ * Runs the build command if provided
+ * @param {string} buildCommand - The build command to run
+ */
+async function runBuild(buildCommand) {
+  if (!buildCommand) {
+    return;
+  }
+
+  core.info(`🔨 Running build command: ${buildCommand}`);
+  try {
+    await exec.exec('bash', ['-c', buildCommand]);
+    core.info('✅ Build completed successfully');
+  } catch (error) {
+    core.setFailed(`❌ Build failed: ${error.message}`);
+    throw error;
+  }
+}
+
+module.exports = {
+  runBuild
+};
+
+
+/***/ }),
+
+/***/ 4015:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const { ensurePackageManager, installDependencies } = __nccwpck_require__(9260);
+const { ensureRyuuInstalled } = __nccwpck_require__(6313);
+
+/**
+ * Sets up the environment by ensuring package manager and installing dependencies
+ */
+async function setupEnvironment() {
+  // Check for package manager and install if needed
+  await ensurePackageManager();
+
+  // Install dependencies if package.json exists
+  await installDependencies();
+
+  // Install ryuu if not already installed
+  await ensureRyuuInstalled();
+}
+
+module.exports = {
+  setupEnvironment
+};
+
+
+/***/ }),
+
+/***/ 5130:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const core = __nccwpck_require__(7484);
+
+/**
+ * Validates the required inputs
+ * @param {string} domoToken - The Domo API token
+ * @param {string} domoInstance - The Domo instance URL
+ */
+function validateInputs(domoToken, domoInstance) {
+  // Validate Domo instance URL
+  if (!domoInstance || !domoInstance.includes('domo.com')) {
+    core.setFailed('Invalid Domo instance URL. Must be a valid Domo instance.');
+    return false;
+  }
+
+  // Validate Domo token
+  if (!domoToken) {
+    core.setFailed('Domo token is required for authentication.');
+    return false;
+  }
+
+  return true;
+}
+
+module.exports = {
+  validateInputs
+};
+
+
+/***/ }),
+
+/***/ 6313:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const exec = __nccwpck_require__(5236);
+const core = __nccwpck_require__(7484);
+
+/**
+ * Extracts instance name from Domo URL
+ * @param {string} domoInstance - The full Domo instance URL
+ * @returns {string} The instance name
+ */
+function extractInstanceName(domoInstance) {
+  return domoInstance
+    .replace(/^https?:\/\//, '')
+    .replace(/\/$/, '');
+}
+
+/**
+ * Installs ryuu (Domo CLI) if not already installed
+ */
+async function ensureRyuuInstalled() {
+  core.info('📦 Checking for ryuu installation...');
+  try {
+    await exec.exec('npm', ['list', '-g', 'ryuu'], { silent: true });
+    core.info('✅ ryuu is already installed');
+  } catch (error) {
+    core.info('📦 Installing ryuu globally...');
+    await exec.exec('npm', ['install', '-g', 'ryuu']);
+    core.info('✅ ryuu installed successfully');
+  }
+}
+
+/**
+ * Authenticates with Domo using token
+ * @param {string} domoToken - The Domo API token
+ * @param {string} domoInstance - The Domo instance URL
+ */
+async function authenticateWithDomo(domoToken, domoInstance) {
+  core.info('🔐 Adding Domo token and authenticating...');
+  
+  const instanceName = extractInstanceName(domoInstance);
+  
+  // Add token to domo CLI
+  const addTokenCommand = `domo token -i ${instanceName} -t ${domoToken} add`;
+  await exec.exec('bash', ['-c', addTokenCommand]);
+  core.info('✅ Token added successfully');
+
+  // Login to Domo
+  const loginCommand = `domo login --instance ${instanceName}`;
+  await exec.exec('bash', ['-c', loginCommand]);
+  core.info('✅ Successfully authenticated with Domo');
+}
+
+/**
+ * Publishes the app to Domo
+ * @param {string} appPath - The path to the app to publish
+ * @param {string} domoInstance - The Domo instance URL
+ */
+async function publishApp(appPath, domoInstance) {
+  core.info('📤 Publishing app to Domo...');
+  
+  const publishCommand = `domo publish "${appPath}"`;
+  await exec.exec('bash', ['-c', publishCommand]);
+  core.info('✅ App published successfully');
+  
+  // Set outputs
+  core.setOutput('deployment-status', 'success');
+  core.setOutput('app-url', `${domoInstance}/app/${appPath}`);
+}
+
+module.exports = {
+  extractInstanceName,
+  ensureRyuuInstalled,
+  authenticateWithDomo,
+  publishApp
+};
+
+
+/***/ }),
+
+/***/ 9260:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const fs = __nccwpck_require__(9896);
+const exec = __nccwpck_require__(5236);
+const core = __nccwpck_require__(7484);
+
+/**
+ * Detects which package manager to use based on lock files
+ * @returns {string} The package manager name ('pnpm', 'yarn', 'npm')
+ */
+function detectPackageManager() {
+  const hasPnpmLock = fs.existsSync('pnpm-lock.yaml');
+  const hasYarnLock = fs.existsSync('yarn.lock');
+  const hasNpmLock = fs.existsSync('package-lock.json');
+
+  if (hasPnpmLock) return 'pnpm';
+  if (hasYarnLock) return 'yarn';
+  if (hasNpmLock) return 'npm';
+  return 'npm'; // Default to npm
+}
+
+/**
+ * Ensures the appropriate package manager is installed
+ */
+async function ensurePackageManager() {
+  try {
+    const packageManager = detectPackageManager();
+    
+    if (packageManager === 'pnpm') {
+      core.info('📦 Detected pnpm lock file, ensuring pnpm is available...');
+      try {
+        await exec.exec('pnpm', ['--version'], { silent: true });
+        core.info('✅ pnpm is already available');
+      } catch (error) {
+        core.info('📦 Installing pnpm...');
+        await exec.exec('npm', ['install', '-g', 'pnpm']);
+        core.info('✅ pnpm installed successfully');
+      }
+    } else if (packageManager === 'yarn') {
+      core.info('📦 Detected yarn lock file, ensuring yarn is available...');
+      try {
+        await exec.exec('yarn', ['--version'], { silent: true });
+        core.info('✅ yarn is already available');
+      } catch (error) {
+        core.info('📦 Installing yarn...');
+        await exec.exec('npm', ['install', '-g', 'yarn']);
+        core.info('✅ yarn installed successfully');
+      }
+    } else {
+      core.info('📦 Using npm (default package manager)');
+    }
+    
+    return packageManager;
+  } catch (error) {
+    core.warning(`⚠️ Could not detect package manager: ${error.message}`);
+    return 'npm';
+  }
+}
+
+/**
+ * Installs dependencies using the appropriate package manager
+ */
+async function installDependencies() {
+  try {
+    // Check if package.json exists
+    if (!fs.existsSync('package.json')) {
+      core.info('📦 No package.json found, skipping dependency installation');
+      return;
+    }
+
+    // Check if node_modules exists
+    if (fs.existsSync('node_modules')) {
+      core.info('📦 node_modules already exists, skipping installation');
+      return;
+    }
+
+    const packageManager = detectPackageManager();
+    core.info('📦 Installing dependencies...');
+    
+    if (packageManager === 'pnpm') {
+      await exec.exec('pnpm', ['install', '--frozen-lockfile']);
+    } else if (packageManager === 'yarn') {
+      await exec.exec('yarn', ['install', '--frozen-lockfile']);
+    } else if (packageManager === 'npm') {
+      if (fs.existsSync('package-lock.json')) {
+        await exec.exec('npm', ['ci']);
+      } else {
+        await exec.exec('npm', ['install']);
+      }
+    }
+    
+    core.info('✅ Dependencies installed successfully');
+  } catch (error) {
+    core.warning(`⚠️ Could not install dependencies: ${error.message}`);
+  }
+}
+
+module.exports = {
+  detectPackageManager,
+  ensurePackageManager,
+  installDependencies
+};
+
+
+/***/ }),
+
 /***/ 2613:
 /***/ ((module) => {
 
@@ -27556,82 +27900,12 @@ module.exports = parseParams
 /************************************************************************/
 var __webpack_exports__ = {};
 const core = __nccwpck_require__(7484);
-const exec = __nccwpck_require__(5236);
-const fs = __nccwpck_require__(9896);
-
-async function ensurePackageManager() {
-  try {
-    // Check for lock files to determine package manager
-    const hasPnpmLock = fs.existsSync('pnpm-lock.yaml');
-    const hasYarnLock = fs.existsSync('yarn.lock');
-    const hasNpmLock = fs.existsSync('package-lock.json');
-
-    if (hasPnpmLock) {
-      core.info('📦 Detected pnpm lock file, ensuring pnpm is available...');
-      try {
-        await exec.exec('pnpm', ['--version'], { silent: true });
-        core.info('✅ pnpm is already available');
-      } catch (error) {
-        core.info('📦 Installing pnpm...');
-        await exec.exec('npm', ['install', '-g', 'pnpm']);
-        core.info('✅ pnpm installed successfully');
-      }
-    } else if (hasYarnLock) {
-      core.info('📦 Detected yarn lock file, ensuring yarn is available...');
-      try {
-        await exec.exec('yarn', ['--version'], { silent: true });
-        core.info('✅ yarn is already available');
-      } catch (error) {
-        core.info('📦 Installing yarn...');
-        await exec.exec('npm', ['install', '-g', 'yarn']);
-        core.info('✅ yarn installed successfully');
-      }
-    } else if (hasNpmLock) {
-      core.info('📦 Detected npm lock file, npm should be available');
-    } else {
-      core.info('📦 No lock file detected, assuming npm is available');
-    }
-  } catch (error) {
-    core.warning(`⚠️ Could not detect package manager: ${error.message}`);
-  }
-}
-
-async function installDependencies() {
-  try {
-    // Check if package.json exists
-    if (!fs.existsSync('package.json')) {
-      core.info('📦 No package.json found, skipping dependency installation');
-      return;
-    }
-
-    // Check if node_modules exists
-    if (fs.existsSync('node_modules')) {
-      core.info('📦 node_modules already exists, skipping installation');
-      return;
-    }
-
-    // Determine which package manager to use
-    const hasPnpmLock = fs.existsSync('pnpm-lock.yaml');
-    const hasYarnLock = fs.existsSync('yarn.lock');
-    const hasNpmLock = fs.existsSync('package-lock.json');
-
-    core.info('📦 Installing dependencies...');
-
-    if (hasPnpmLock) {
-      await exec.exec('pnpm', ['install', '--frozen-lockfile']);
-    } else if (hasYarnLock) {
-      await exec.exec('yarn', ['install', '--frozen-lockfile']);
-    } else if (hasNpmLock) {
-      await exec.exec('npm', ['ci']);
-    } else {
-      await exec.exec('npm', ['install']);
-    }
-
-    core.info('✅ Dependencies installed successfully');
-  } catch (error) {
-    core.warning(`⚠️ Could not install dependencies: ${error.message}`);
-  }
-}
+const { validateInputs } = __nccwpck_require__(5130);
+const { setupEnvironment } = __nccwpck_require__(4015);
+const { authenticateDomo } = __nccwpck_require__(505);
+const { runBuild } = __nccwpck_require__(8338);
+const { changeDirectory } = __nccwpck_require__(7126);
+const { publishAppStep } = __nccwpck_require__(2687);
 
 async function run() {
   try {
@@ -27646,15 +27920,7 @@ async function run() {
     const appPath = workingDirectory;
 
     // Validate inputs
-    if (!domoInstance || !domoInstance.includes('domo.com')) {
-      core.setFailed(
-        'Invalid Domo instance URL. Must be a valid Domo instance.',
-      );
-      return;
-    }
-
-    if (!domoToken) {
-      core.setFailed('Domo token is required for authentication.');
+    if (!validateInputs(domoToken, domoInstance)) {
       return;
     }
 
@@ -27662,78 +27928,20 @@ async function run() {
     core.info(`📁 App path: ${appPath}`);
     core.info(`🌐 Domo instance: ${domoInstance}`);
 
-    // Check for package manager and install if needed
-    await ensurePackageManager();
+    // Setup environment (package manager, dependencies, ryuu)
+    await setupEnvironment();
 
-    // Install dependencies if package.json exists
-    await installDependencies();
-
-    // Install ryuu if not already installed
-    core.info('📦 Checking for ryuu installation...');
-    try {
-      await exec.exec('npm', ['list', '-g', 'ryuu'], { silent: true });
-      core.info('✅ ryuu is already installed');
-    } catch (error) {
-      core.info('📦 Installing ryuu globally...');
-      await exec.exec('npm', ['install', '-g', 'ryuu']);
-      core.info('✅ ryuu installed successfully');
-    }
-
-    // Add Domo token and login (before build, in case build needs Domo access)
-    core.info('🔐 Adding Domo token and authenticating...');
-    try {
-      // Extract instance name from URL (e.g., https://company.domo.com -> company.domo.com)
-      const instanceName = domoInstance
-        .replace(/^https?:\/\//, '')
-        .replace(/\/$/, '');
-
-      // Add token to domo CLI
-      const addTokenCommand = `domo token -i ${instanceName} -t ${domoToken} add`;
-      await exec.exec('bash', ['-c', addTokenCommand]);
-      core.info('✅ Token added successfully');
-
-      // Login to Domo
-      const loginCommand = `domo login --instance ${instanceName}`;
-      await exec.exec('bash', ['-c', loginCommand]);
-      core.info('✅ Successfully authenticated with Domo');
-    } catch (error) {
-      core.setFailed(`❌ Failed to authenticate with Domo: ${error.message}`);
-      return;
-    }
+    // Authenticate with Domo (before build, in case build needs Domo access)
+    await authenticateDomo(domoToken, domoInstance);
 
     // Run build command if provided (after authentication, in case it needs Domo access)
-    if (buildCommand) {
-      core.info(`🔨 Running build command: ${buildCommand}`);
-      try {
-        await exec.exec('bash', ['-c', buildCommand]);
-        core.info('✅ Build completed successfully');
-      } catch (error) {
-        core.setFailed(`❌ Build failed: ${error.message}`);
-        return;
-      }
-    }
+    await runBuild(buildCommand);
 
     // Change to working directory (after build, so the directory exists)
-    if (workingDirectory !== '.') {
-      core.info(`📂 Changing to working directory: ${workingDirectory}`);
-      process.chdir(workingDirectory);
-    }
+    changeDirectory(workingDirectory);
 
     // Publish the app
-    core.info('📤 Publishing app to Domo...');
-    try {
-      const publishCommand = `domo publish "${appPath}"`;
-      await exec.exec('bash', ['-c', publishCommand]);
-      core.info('✅ App published successfully');
-
-      // Set outputs
-      core.setOutput('deployment-status', 'success');
-      core.setOutput('app-url', `${domoInstance}/app/${appPath}`);
-    } catch (error) {
-      core.setFailed(`❌ Failed to publish app: ${error.message}`);
-      core.setOutput('deployment-status', 'failed');
-      return;
-    }
+    await publishAppStep(appPath, domoInstance);
 
     core.info('🎉 Deployment completed successfully!');
   } catch (error) {
