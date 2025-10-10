@@ -42,7 +42,8 @@ describe('Domo Publish Action', () => {
     const invalidInstance = 'https://not-domo.com';
 
     expect(validInstance.includes('domo.com')).toBe(true);
-    expect(invalidInstance.includes('domo.com')).toBe(false);
+    expect(invalidInstance.includes('domo.com')).toBe(true); // This actually returns true
+    expect(invalidInstance.includes('.domo.com')).toBe(false); // This is what we want to test
   });
 
   test('should handle build command execution', async () => {
