@@ -38,8 +38,7 @@
   },
   "lint-staged": {
     "src/**/*.js": [
-      "eslint --fix",
-      "yarn run build"
+      "eslint --fix"
     ],
     "*.{json,yml,yaml}": [
       "prettier --write"

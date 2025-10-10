@@ -27596,6 +27596,43 @@ async function ensurePackageManager() {
   }
 }
 
+async function installDependencies() {
+  try {
+    // Check if package.json exists
+    if (!fs.existsSync('package.json')) {
+      core.info('📦 No package.json found, skipping dependency installation');
+      return;
+    }
+
+    // Check if node_modules exists
+    if (fs.existsSync('node_modules')) {
+      core.info('📦 node_modules already exists, skipping installation');
+      return;
+    }
+
+    // Determine which package manager to use
+    const hasPnpmLock = fs.existsSync('pnpm-lock.yaml');
+    const hasYarnLock = fs.existsSync('yarn.lock');
+    const hasNpmLock = fs.existsSync('package-lock.json');
+
+    core.info('📦 Installing dependencies...');
+    
+    if (hasPnpmLock) {
+      await exec.exec('pnpm', ['install', '--frozen-lockfile']);
+    } else if (hasYarnLock) {
+      await exec.exec('yarn', ['install', '--frozen-lockfile']);
+    } else if (hasNpmLock) {
+      await exec.exec('npm', ['ci']);
+    } else {
+      await exec.exec('npm', ['install']);
+    }
+    
+    core.info('✅ Dependencies installed successfully');
+  } catch (error) {
+    core.warning(`⚠️ Could not install dependencies: ${error.message}`);
+  }
+}
+
 async function run() {
   try {
     // Get inputs
@@ -27627,6 +27664,9 @@ async function run() {
 
     // Check for package manager and install if needed
     await ensurePackageManager();
+
+    // Install dependencies if package.json exists
+    await installDependencies();
 
     // Run build command if provided (before changing directory)
     if (buildCommand) {
