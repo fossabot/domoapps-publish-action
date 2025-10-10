@@ -1,5 +1,43 @@
 const core = require('@actions/core');
 const exec = require('@actions/exec');
+const fs = require('fs');
+
+async function ensurePackageManager() {
+  try {
+    // Check for lock files to determine package manager
+    const hasPnpmLock = fs.existsSync('pnpm-lock.yaml');
+    const hasYarnLock = fs.existsSync('yarn.lock');
+    const hasNpmLock = fs.existsSync('package-lock.json');
+
+    if (hasPnpmLock) {
+      core.info('📦 Detected pnpm lock file, ensuring pnpm is available...');
+      try {
+        await exec.exec('pnpm', ['--version'], { silent: true });
+        core.info('✅ pnpm is already available');
+      } catch (error) {
+        core.info('📦 Installing pnpm...');
+        await exec.exec('npm', ['install', '-g', 'pnpm']);
+        core.info('✅ pnpm installed successfully');
+      }
+    } else if (hasYarnLock) {
+      core.info('📦 Detected yarn lock file, ensuring yarn is available...');
+      try {
+        await exec.exec('yarn', ['--version'], { silent: true });
+        core.info('✅ yarn is already available');
+      } catch (error) {
+        core.info('📦 Installing yarn...');
+        await exec.exec('npm', ['install', '-g', 'yarn']);
+        core.info('✅ yarn installed successfully');
+      }
+    } else if (hasNpmLock) {
+      core.info('📦 Detected npm lock file, npm should be available');
+    } else {
+      core.info('📦 No lock file detected, assuming npm is available');
+    }
+  } catch (error) {
+    core.warning(`⚠️ Could not detect package manager: ${error.message}`);
+  }
+}
 
 async function run() {
   try {
@@ -29,6 +67,9 @@ async function run() {
     core.info('🚀 Starting Domo app deployment...');
     core.info(`📁 App path: ${appPath}`);
     core.info(`🌐 Domo instance: ${domoInstance}`);
+
+    // Check for package manager and install if needed
+    await ensurePackageManager();
 
     // Run build command if provided (before changing directory)
     if (buildCommand) {
