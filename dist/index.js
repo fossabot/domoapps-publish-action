@@ -27587,13 +27587,7 @@ async function run() {
     core.info(`📁 App path: ${appPath}`);
     core.info(`🌐 Domo instance: ${domoInstance}`);
 
-    // Change to working directory
-    if (workingDirectory !== '.') {
-      core.info(`📂 Changing to working directory: ${workingDirectory}`);
-      process.chdir(workingDirectory);
-    }
-
-    // Run build command if provided
+    // Run build command if provided (before changing directory)
     if (buildCommand) {
       core.info(`🔨 Running build command: ${buildCommand}`);
       try {
@@ -27603,6 +27597,12 @@ async function run() {
         core.setFailed(`❌ Build failed: ${error.message}`);
         return;
       }
+    }
+
+    // Change to working directory (after build, so the directory exists)
+    if (workingDirectory !== '.') {
+      core.info(`📂 Changing to working directory: ${workingDirectory}`);
+      process.chdir(workingDirectory);
     }
 
     // Install ryuu if not already installed
