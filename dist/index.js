@@ -27616,7 +27616,7 @@ async function installDependencies() {
     const hasNpmLock = fs.existsSync('package-lock.json');
 
     core.info('📦 Installing dependencies...');
-    
+
     if (hasPnpmLock) {
       await exec.exec('pnpm', ['install', '--frozen-lockfile']);
     } else if (hasYarnLock) {
@@ -27626,7 +27626,7 @@ async function installDependencies() {
     } else {
       await exec.exec('npm', ['install']);
     }
-    
+
     core.info('✅ Dependencies installed successfully');
   } catch (error) {
     core.warning(`⚠️ Could not install dependencies: ${error.message}`);
