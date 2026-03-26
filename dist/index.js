@@ -25676,7 +25676,13 @@ const core = __nccwpck_require__(7484);
 function changeDirectory(workingDirectory) {
   if (workingDirectory !== '.') {
     core.info(`📂 Changing to working directory: ${workingDirectory}`);
-    process.chdir(workingDirectory);
+    try {
+      process.chdir(workingDirectory);
+    } catch (error) {
+      throw new Error(
+        `Working directory '${workingDirectory}' does not exist or is not accessible: ${error.message}`,
+      );
+    }
   }
 }
 
@@ -25782,7 +25788,7 @@ const core = __nccwpck_require__(7484);
  */
 function validateInputs(domoToken, domoInstance) {
   // Validate Domo instance URL
-  if (!domoInstance || !domoInstance.includes('domo.com')) {
+  if (!domoInstance || !domoInstance.includes('.domo.com')) {
     core.setFailed('Invalid Domo instance URL. Must be a valid Domo instance.');
     return false;
   }
@@ -25843,14 +25849,8 @@ async function authenticateWithDomo(domoToken, domoInstance) {
 
   const instanceName = extractInstanceName(domoInstance);
 
-  // Add token to domo CLI
-  const addTokenCommand = `domo token -i ${instanceName} -t ${domoToken} add`;
-  await exec.exec('bash', ['-c', addTokenCommand]);
-  core.info('✅ Token added successfully');
-
-  // Login to Domo
-  const loginCommand = `domo login --instance ${instanceName}`;
-  await exec.exec('bash', ['-c', loginCommand]);
+  // Login to Domo using the globally-installed ryuu CLI
+  await exec.exec('domo', ['login', '-i', instanceName, '-t', domoToken]);
   core.info('✅ Successfully authenticated with Domo');
 }
 
@@ -25862,8 +25862,8 @@ async function authenticateWithDomo(domoToken, domoInstance) {
 async function publishApp(appPath, domoInstance) {
   core.info('📤 Publishing app to Domo...');
 
-  const publishCommand = `domo publish "${appPath}"`;
-  await exec.exec('bash', ['-c', publishCommand]);
+  // Publish using the globally-installed ryuu CLI
+  await exec.exec('domo', ['publish', '--build-dir', appPath]);
   core.info('✅ App published successfully');
 
   // Set outputs
@@ -27922,6 +27922,7 @@ async function run() {
 
     // Validate inputs
     if (!validateInputs(domoToken, domoInstance)) {
+      core.setOutput('deployment-status', 'failed');
       return;
     }
 

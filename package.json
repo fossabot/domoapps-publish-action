@@ -1,6 +1,6 @@
 {
   "name": "domo-publish-action",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "GitHub Action for deploying Domo apps to Domo instances",
   "main": "dist/index.js",
   "scripts": {
@@ -23,7 +23,7 @@
     "@actions/exec": "^1.1.1",
     "@actions/github": "^6.0.0",
     "@actions/io": "^1.1.2",
-    "ryuu": "^4.4.14"
+    "ryuu": "^5.0.0"
   },
   "devDependencies": {
     "@vercel/ncc": "^0.38.0",

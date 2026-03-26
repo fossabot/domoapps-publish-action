@@ -35,14 +35,8 @@ async function authenticateWithDomo(domoToken, domoInstance) {
 
   const instanceName = extractInstanceName(domoInstance);
 
-  // Add token to domo CLI
-  const addTokenCommand = `domo token -i ${instanceName} -t ${domoToken} add`;
-  await exec.exec('bash', ['-c', addTokenCommand]);
-  core.info('✅ Token added successfully');
-
-  // Login to Domo
-  const loginCommand = `domo login --instance ${instanceName}`;
-  await exec.exec('bash', ['-c', loginCommand]);
+  // Login to Domo using the globally-installed ryuu CLI
+  await exec.exec('domo', ['login', '-i', instanceName, '-t', domoToken]);
   core.info('✅ Successfully authenticated with Domo');
 }
 
@@ -54,8 +48,8 @@ async function authenticateWithDomo(domoToken, domoInstance) {
 async function publishApp(appPath, domoInstance) {
   core.info('📤 Publishing app to Domo...');
 
-  const publishCommand = `domo publish "${appPath}"`;
-  await exec.exec('bash', ['-c', publishCommand]);
+  // Publish using the globally-installed ryuu CLI
+  await exec.exec('domo', ['publish', '--build-dir', appPath]);
   core.info('✅ App published successfully');
 
   // Set outputs
