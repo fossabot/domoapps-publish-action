@@ -35,7 +35,10 @@
 | `DOMO_INSTANCE` | e.g. `domo-yourcompany.domo.com` | Variable |
 
 **Settings → Actions → General → Workflow permissions:**
+
 Check **"Allow GitHub Actions to create and approve pull requests"**
+
+> Without this the action still publishes and surfaces the id in the Job Summary — it just can't open the PR automatically.
 
 ---
 
@@ -63,7 +66,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: DomoApps/domoapps-publish-action@v3
+      - uses: DomoApps/domoapps-publish-action@v4.0.0
         with:
           domo-token: ${{ secrets.DOMO_TOKEN }}
           domo-instance: ${{ vars.DOMO_INSTANCE }}
@@ -92,14 +95,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-      - uses: DomoApps/domoapps-publish-action@v3
+      - uses: DomoApps/domoapps-publish-action@v4.0.0
         with:
           domo-token: ${{ secrets.DOMO_TOKEN }}
           domo-instance: ${{ vars.DOMO_INSTANCE }}
