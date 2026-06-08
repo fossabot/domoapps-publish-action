@@ -341,14 +341,14 @@ describe('Domo Publish Action', () => {
 
       await publishApp('./dist', 'https://company.domo.com', '/workspace', 'gh-token-123');
 
-      expect(exec.exec).toHaveBeenCalledWith('git', ['checkout', '-b', 'chore/add-domo-design-id']);
+      expect(exec.exec).toHaveBeenCalledWith('git', ['checkout', '-b', 'chore/domo-design-id-aaaaaaaa']);
       expect(exec.exec).toHaveBeenCalledWith('git', ['add', path.join('/workspace', 'manifest.json')]);
       expect(exec.exec).toHaveBeenCalledWith('git', ['commit', '-m', 'chore: add Domo design id to manifest.json']);
-      expect(exec.exec).toHaveBeenCalledWith('git', ['push', 'origin', 'chore/add-domo-design-id']);
+      expect(exec.exec).toHaveBeenCalledWith('git', ['push', 'origin', 'chore/domo-design-id-aaaaaaaa']);
       expect(mockCreatePR).toHaveBeenCalledWith(expect.objectContaining({
         owner: 'org',
         repo: 'repo',
-        head: 'chore/add-domo-design-id',
+        head: 'chore/domo-design-id-aaaaaaaa',
         base: 'main',
       }));
     });

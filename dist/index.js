@@ -30131,7 +30131,7 @@ function findSourceManifest(workingDirectory) {
 async function openDesignIdPR(manifestPath, designId, githubToken) {
   const serverUrl = process.env.GITHUB_SERVER_URL || 'https://github.com';
   const [owner, repo] = (process.env.GITHUB_REPOSITORY || '/').split('/');
-  const branchName = 'chore/add-domo-design-id';
+  const branchName = `chore/domo-design-id-${designId.slice(0, 8)}`;
   const base64Token = Buffer.from(`x-access-token:${githubToken}`).toString('base64');
 
   await exec.exec('git', [
