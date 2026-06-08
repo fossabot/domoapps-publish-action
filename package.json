@@ -1,6 +1,6 @@
 {
   "name": "domo-publish-action",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "description": "GitHub Action for deploying Domo apps to Domo instances",
   "main": "dist/index.js",
   "scripts": {

@@ -33,15 +33,15 @@ A GitHub Action for deploying Domo Custom Apps to a Domo instance using the [`ry
 ## Features
 
 - 🔐 Token-based authentication with Domo
-- 📦 Auto-detects npm / yarn / pnpm from your lockfile and installs your dependencies for you
-- 🛠 Auto-installs `ryuu` (the Domo CLI) on the runner
+- 📦 Auto-detects npm / yarn / pnpm from your lockfile and installs dependencies
+- 🛠 Auto-installs the [Domo CLI](https://app.domo.com/domo-cli/install.sh) on the runner
 - ⚛️ React / Vite / CRA friendly — separate `working-directory` (source) and `publish-dir` (build output)
 - 🔨 Optional build step run inside your source directory
 - 📤 Publishes only the build artifact, not the whole repo
-- 🆔 On first deploy, auto-writes the new design id back to your source `manifest.json` and commits it — no manual copy-paste required
+- 🆔 On first deploy, opens a PR to write the design id back to your source `manifest.json`
 - 📊 Outputs `deployment-status`, `app-url`, and `design-id` for downstream steps
 
-> **You don't need a separate `npm install` / `yarn install` / `pnpm install` step.** The action runs it for you using whichever package manager matches your lockfile. Add your own install step only if you're running pre-build commands (lint, test, type-check) in earlier steps that need `node_modules`.
+> **You don't need a separate install step.** The action runs it for you. Add your own only if pre-build steps (lint, test) need `node_modules` before the action runs.
 
 ---
 
@@ -55,22 +55,18 @@ on:
     branches: [main]
 
 permissions:
-  contents: write      # required to push the design-id branch
-  pull-requests: write # required to open the PR against main
+  contents: write
+  pull-requests: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'npm'
-
-      - name: Deploy to Domo
-        uses: DomoApps/domoapps-publish-action@v3.0.0
+      - uses: DomoApps/domoapps-publish-action@v3.0.0
         with:
           domo-token: ${{ secrets.DOMO_TOKEN }}
           domo-instance: ${{ vars.DOMO_INSTANCE }}
@@ -227,14 +223,12 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# Required so the action can commit the design id back on first deploy
 permissions:
   contents: write
+  pull-requests: write
 
 env:
-  # Ensures all JS-based actions use Node 24 even if they declare node20.
-  # Safe to remove once every action in this workflow ships a node24 runtime.
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   deploy:
@@ -244,27 +238,23 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10
 
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: pnpm
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Deploy to Domo
-        uses: DomoApps/domoapps-publish-action@v3.0.0
+      - uses: DomoApps/domoapps-publish-action@v3.0.0
         with:
           domo-token: ${{ secrets.DOMO_TOKEN }}
           domo-instance: ${{ vars.DOMO_INSTANCE }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          build-command: pnpm run build:prod
+          build-command: pnpm run build:ci
           publish-dir: ./build
 ```
 
-> **Why the explicit `pnpm install` step?** The action runs its own install, but pre-build commands (type-check, lint) chained into `build-command` run *after* that — so if you gate your build on `tsc` or `eslint`, the install is already done by the time they run. The separate install step here is only needed because other steps in your workflow (pre-deploy gates, custom scripts) might need `node_modules` *before* the action runs. If you have no such steps, you can drop it and let the action handle the install.
+> **`build:ci`** should run `vite build` (or equivalent) without calling `da apply-manifest` — use a script name other than `build` to avoid the `prebuild` lifecycle hook. See the `@domoinc/da` note above.
 
 `da apply-manifest <env>` reads `src/manifestOverrides.json` and writes a build-time manifest with that env's `id` / `proxyId` / dataset UUIDs.
 
@@ -418,26 +408,24 @@ The action auto-detects your package manager from the lockfile and runs the inst
 ## How it works
 
 1. **Detect package manager** from your lockfile (`package-lock.json` / `yarn.lock` / `pnpm-lock.yaml`).
-2. **Install dependencies** with that package manager (`npm ci` / `yarn install --frozen-lockfile` / `pnpm install --frozen-lockfile`).
-3. **Install `ryuu` globally** on the runner.
-4. **Authenticate**: `domo login -i <instance> -t <token>`. Done before the build so a build step can hit Domo APIs if needed.
+2. **Install dependencies** with that package manager.
+3. **Install the Domo CLI** on the runner via the official install script.
+4. **Authenticate**: `domo auth login <instance> --token <token>`.
 5. **Build**: change to `working-directory` and run `build-command` (if provided).
-6. **Publish**: `cd` into `publish-dir`, then run plain `domo publish`. Only the contents of `publish-dir` are uploaded.
+6. **Publish**: `domo app publish [--build-dir <publish-dir>]` from `working-directory`.
+7. **First publish only**: if a new design is created, write the `id` to the source `manifest.json` and open a PR against `main`.
 
-> **Why we `cd` instead of using `domo publish --build-dir`**: ryuu loads `manifest.json` *before* applying its own `--build-dir` chdir, so it would resolve the manifest against the caller's CWD (often `public/manifest.json` with no `id`) — causing a brand-new design to be created on every run instead of updating the one your build emitted. Chdir-ing ourselves lets ryuu's `findManifest` land directly on the resolved `manifest.json` inside your build output.
-
-You don't need a separate install step. The only setup the action *doesn't* do is making the package manager binary itself available — for npm and yarn, `actions/setup-node` already includes them; for pnpm you need `pnpm/action-setup`.
+For pnpm you need `pnpm/action-setup` before the action. For npm/yarn, `actions/setup-node` is sufficient.
 
 ---
 
 ## Setup
 
-### 1. Create a Domo API token
+### 1. Create a Domo developer token
 
-1. Log in to your Domo instance
-2. **Admin** → **Authentication** → **Personal Access Tokens**
-3. Create a token with permissions for app deployment
-4. Save it as a GitHub Actions secret named `DOMO_TOKEN`
+1. Log in to your Domo instance as the CICD service account
+2. **Admin → Security → Access Tokens → Generate Access Token**
+3. Save it as a GitHub secret named `DOMO_TOKEN`
 
 ### 2. Configure your app
 

@@ -1,114 +1,122 @@
 # CICD Service Account Setup
 
-This document covers creating a dedicated Domo service account for CI/CD and configuring GitHub to use it with the publish action.
-
----
-
-## Why a dedicated service account?
-
-Using a personal account token ties CI/CD to a specific person — if they leave, all pipelines break. A service account gives you:
-
-- A stable, shared identity for all automated deployments
-- Auditable publish history (all deploys show as the CICD user)
-- The ability to revoke or rotate the token without disrupting anyone's personal access
-
 ---
 
 ## Step 1 — Create the service account in Domo
 
-1. In your Domo instance, go to **Admin → Governance → People**
-2. Click **Invite People**
-3. Use an email address you control (e.g. `cicd@yourcompany.com` or a shared inbox)
-4. Set the display name to something obvious: `CI/CD Deploy Bot` or `GitHub Actions`
-5. Assign the **Participant** role at minimum (see required permissions below)
-6. Complete the email invitation and sign in once to activate the account
-
-> If your organization uses SSO, you may need to create the service account through your identity provider and provision it into Domo. Contact your Domo admin.
-
----
-
-## Step 2 — Required permissions
-
-Create a Domo Role with the minimum required authorities. The service account needs the following Domo permissions to operate:
+1. **Admin → Governance → People → Invite People**
+2. Use a shared email (e.g. `cicd@yourcompany.com`)
+3. Assign a role with: **View DomoApps**, **Create DomoApps**, **Manage DomoApps**
+4. Sign in once to activate the account
 
 ![Role Example](../images/deployment-role.png)
 
-| Permission          | Why it's needed                       |
-| ------------------- | ------------------------------------- |
-| **View DomoApps**   | List and View existing DomoApps       |
-| **Create DomoApps** | Create new DomoApps on initial upload |
-| **Manage DomoApps** | View and manage all custom apps       |
-| **Create DDX Apps** | Create and edit DDX apps              |
+> SSO orgs: provision the account through your identity provider first.
 
 ---
 
-## Step 3 — Generate a developer token
+## Step 2 — Generate a developer token
 
-The action authenticates using a Domo developer token (`X-Domo-Developer-Token`), not OAuth.
+1. Sign in as the CICD account
+2. **Admin → Security → Access Tokens → Generate Access Token**
+3. Name it `github-actions-publish`, set an expiry, copy it immediately
 
-1. Go to **Admin → Security → Access Tokens**  
-   _(or navigate directly to `https://your-instance.domo.com/admin/security/access-tokens`)_
-1. Click **Generate Access Token**
-   - Assign the CICD we created in the previous steps
-   - Give it a descriptive name: `github-actions-publish`
-   - Choose expiration TTL that complies with your rotation schedule
-1. Copy the token immediately — it is only shown once
-
-![example image](../images/access-token.png)
-
-> Tokens do not have configurable scopes in Domo's developer token model. The token inherits the permissions of the account it belongs to.
+![Access Token](../images/access-token.png)
 
 ---
 
-## Step 4 — Add secrets to GitHub
+## Step 3 — Add to GitHub
 
-In your GitHub repository:
+**Settings → Secrets and variables → Actions:**
 
-1. Go to **Settings → Secrets and variables → Actions**
-2. Add the following in repository secrets:
+| Name | Value | Type |
+|---|---|---|
+| `DOMO_TOKEN` | Developer token from Step 2 | Secret |
+| `DOMO_INSTANCE` | e.g. `domo-yourcompany.domo.com` | Variable |
 
-| Name            | Value                                                        | Type     |
-| --------------- | ------------------------------------------------------------ | -------- |
-| `DOMO_TOKEN`    | The developer token from Step 3                              | Secret   |
-| `DOMO_INSTANCE` | Your Domo instance URL, e.g. `https://your-company.domo.com` | Variable |
+**Settings → Actions → General → Workflow permissions:**
+Check **"Allow GitHub Actions to create and approve pull requests"**
 
 ---
 
-## Step 5 — Reference them in your workflow
+## Step 4 — Add the workflow
+
+### ProCode / flat app (no build step)
 
 ```yaml
+# .github/workflows/deploy.yml
+name: Deploy to Domo
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
 permissions:
-  contents: write      # required to push the design-id branch
-  pull-requests: write # required to open the PR against main
+  contents: write
+  pull-requests: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Deploy to Domo
-        uses: domoinc/domoapps-publish-action@v3
+      - uses: DomoApps/domoapps-publish-action@v3
         with:
           domo-token: ${{ secrets.DOMO_TOKEN }}
           domo-instance: ${{ vars.DOMO_INSTANCE }}
-          github-token: ${{ secrets.GITHUB_TOKEN }} # enables auto-commit on first deploy
-          build-command: npm run build # optional
-          working-directory: . # optional
-          publish-dir: dist # optional
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-> `github-token` is optional. Without it, the action still publishes successfully and surfaces the design id in the Job Summary — you'll just need to add it to `manifest.json` manually.
+### React / Vite app with pnpm
+
+```yaml
+# .github/workflows/deploy.yml
+name: Deploy to Domo
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: DomoApps/domoapps-publish-action@v3
+        with:
+          domo-token: ${{ secrets.DOMO_TOKEN }}
+          domo-instance: ${{ vars.DOMO_INSTANCE }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          build-command: pnpm run build:ci
+          publish-dir: ./build
+```
+
+> `build:ci` must **not** trigger a `prebuild` lifecycle hook — use a script name other than `build` to avoid `da apply-manifest` running without a TTY. See the `@domoinc/da` section in the README.
 
 ---
 
-## First deploy — what happens automatically
+## First deploy
 
-On the first push, `manifest.json` has no `id`. The action will:
+On first push, `manifest.json` has no `id`. The action will:
 
-1. Publish the app — Domo creates a new design and returns its id
-2. Write the `id` into your source `manifest.json`
-3. Commit and push that change back to your branch as `github-actions[bot]`
-4. Set a `design-id` action output for any downstream steps
-
-All future deployments update the same design. No manual step required.
+1. Publish — Domo creates a new design and returns its id
+2. Write the `id` to your source `manifest.json`
+3. Open a PR `chore/domo-design-id-{8chars}` against `main`
+4. **Merge the PR** — all future deployments update the same design
