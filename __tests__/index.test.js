@@ -176,18 +176,12 @@ describe('Domo Publish Action', () => {
   });
 
   describe('Domo Authentication', () => {
-    const {
-      authenticateWithDomo,
-    } = require('../src/utils/domoHelpers');
+    const { authenticateWithDomo } = require('../src/utils/domoHelpers');
 
-    test('calls domo login with correct args', async () => {
+    test('calls domo auth login with instance and token', async () => {
       await authenticateWithDomo('my-token', 'https://company.domo.com');
       expect(exec.exec).toHaveBeenCalledWith('domo', [
-        'login',
-        '-i',
-        'company.domo.com',
-        '-t',
-        'my-token',
+        'auth', 'login', 'company.domo.com', '--token', 'my-token',
       ]);
     });
   });
@@ -195,9 +189,14 @@ describe('Domo Publish Action', () => {
   describe('Domo Publish', () => {
     const { publishApp } = require('../src/utils/domoHelpers');
 
-    test('calls domo publish via getExecOutput (no flags, relies on CWD)', async () => {
+    test('calls domo app publish --go for root publish dir', async () => {
+      await publishApp('.', 'https://company.domo.com', '/workspace');
+      expect(exec.getExecOutput).toHaveBeenCalledWith('domo', ['app', 'publish', '--go']);
+    });
+
+    test('passes --build-dir when publishDir is not "."', async () => {
       await publishApp('./dist', 'https://company.domo.com', '/workspace');
-      expect(exec.getExecOutput).toHaveBeenCalledWith('domo', ['publish']);
+      expect(exec.getExecOutput).toHaveBeenCalledWith('domo', ['app', 'publish', '--go', '--build-dir', './dist']);
     });
 
     test('sets success outputs', async () => {
@@ -211,10 +210,7 @@ describe('Domo Publish Action', () => {
         stdout: '✓ Publishing my-app to company.domo.com\n✓ Uploaded: index.html',
       });
       await publishApp('./dist', 'https://company.domo.com', '/workspace');
-      expect(core.setOutput).not.toHaveBeenCalledWith(
-        'design-id',
-        expect.any(String),
-      );
+      expect(core.setOutput).not.toHaveBeenCalledWith('design-id', expect.any(String));
     });
 
     test('does not trigger new-design flow when uuid is missing from output', async () => {
@@ -222,10 +218,7 @@ describe('Domo Publish Action', () => {
         stdout: '✓ New design created on company.domo.com\nDesign can be found at https://company.domo.com/assetlibrary',
       });
       await publishApp('./dist', 'https://company.domo.com', '/workspace');
-      expect(core.setOutput).not.toHaveBeenCalledWith(
-        'design-id',
-        expect.any(String),
-      );
+      expect(core.setOutput).not.toHaveBeenCalledWith('design-id', expect.any(String));
     });
   });
 

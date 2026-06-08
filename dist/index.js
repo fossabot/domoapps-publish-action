@@ -25748,20 +25748,12 @@ const {
   ensurePackageManager,
   installDependencies,
 } = __nccwpck_require__(9260);
-const { ensureRyuuInstalled } = __nccwpck_require__(6313);
+const { ensureDomoCliInstalled } = __nccwpck_require__(6313);
 
-/**
- * Sets up the environment by ensuring package manager and installing dependencies
- */
 async function setupEnvironment() {
-  // Check for package manager and install if needed
   await ensurePackageManager();
-
-  // Install dependencies if package.json exists
   await installDependencies();
-
-  // Install ryuu if not already installed
-  await ensureRyuuInstalled();
+  await ensureDomoCliInstalled();
 }
 
 module.exports = {
@@ -25821,33 +25813,22 @@ function extractInstanceName(domoInstance) {
   return domoInstance.replace(/^https?:\/\//, '').replace(/\/$/, '');
 }
 
-/**
- * Installs ryuu (Domo CLI) if not already installed
- */
-async function ensureRyuuInstalled() {
-  core.info('📦 Checking for ryuu installation...');
+async function ensureDomoCliInstalled() {
+  core.info('📦 Checking for Domo CLI installation...');
   try {
-    await exec.exec('npm', ['list', '-g', 'ryuu'], { silent: true });
-    core.info('✅ ryuu is already installed');
-  } catch (error) {
-    core.info('📦 Installing ryuu globally...');
-    await exec.exec('npm', ['install', '-g', 'ryuu@beta']);
-    core.info('✅ ryuu installed successfully');
+    await exec.exec('domo', ['--version'], { silent: true });
+    core.info('✅ Domo CLI is already installed');
+  } catch {
+    core.info('📦 Installing Domo CLI...');
+    await exec.exec('bash', ['-c', 'curl -fsSL https://app.domo.com/domo-cli/install.sh | bash']);
+    core.info('✅ Domo CLI installed successfully');
   }
 }
 
-/**
- * Authenticates with Domo using token
- * @param {string} domoToken - The Domo API token
- * @param {string} domoInstance - The Domo instance URL
- */
 async function authenticateWithDomo(domoToken, domoInstance) {
-  core.info('🔐 Adding Domo token and authenticating...');
-
+  core.info('🔐 Authenticating with Domo...');
   const instanceName = extractInstanceName(domoInstance);
-
-  // Login to Domo using the globally-installed ryuu CLI
-  await exec.exec('domo', ['login', '-i', instanceName, '-t', domoToken]);
+  await exec.exec('domo', ['auth', 'login', instanceName, '--token', domoToken]);
   core.info('✅ Successfully authenticated with Domo');
 }
 
@@ -25981,21 +25962,28 @@ async function handleNewDesign(designId, workingDirectory, githubToken) {
  * @param {string} domoInstance - The Domo instance URL
  * @param {string} workingDirectory - Absolute path to working dir (for manifest write-back)
  */
-async function publishApp(
-  appPath,
-  domoInstance,
-  workingDirectory,
-  githubToken,
-) {
+/**
+ * Publishes the app to Domo using the new Domo CLI.
+ * @param {string} publishDir - Path to the built artifact (relative to CWD / workingDirectory)
+ * @param {string} domoInstance - The Domo instance URL
+ * @param {string} workingDirectory - Absolute path to working dir (for manifest write-back)
+ * @param {string} githubToken - Optional GitHub token for auto-committing the design id
+ */
+async function publishApp(publishDir, domoInstance, workingDirectory, githubToken) {
   core.info('📤 Publishing app to Domo...');
 
-  const { stdout } = await exec.getExecOutput('domo', ['publish']);
+  const args = ['app', 'publish', '--go'];
+  if (publishDir && publishDir !== '.') {
+    args.push('--build-dir', publishDir);
+  }
+
+  const { stdout } = await exec.getExecOutput('domo', args);
   core.info('✅ App published successfully');
 
   core.setOutput('deployment-status', 'success');
-  core.setOutput('app-url', `${domoInstance}/app/${appPath}`);
+  core.setOutput('app-url', `${domoInstance}/app/${publishDir}`);
 
-  if (stdout.includes('New design created')) {
+  if (stdout.includes('New design created') || stdout.includes('design created')) {
     const match = stdout.match(/designId=([a-f0-9-]{36})/);
     if (match) {
       await handleNewDesign(match[1], workingDirectory, githubToken);
@@ -26005,7 +25993,7 @@ async function publishApp(
 
 module.exports = {
   extractInstanceName,
-  ensureRyuuInstalled,
+  ensureDomoCliInstalled,
   authenticateWithDomo,
   publishApp,
   findSourceManifest,
@@ -28074,10 +28062,6 @@ async function run() {
     changeDirectory(workingDirectory);
 
     await runBuild(buildCommand);
-
-    if (publishDir !== '.') {
-      changeDirectory(publishDir);
-    }
 
     await publishAppStep(publishDir, domoInstance, absoluteWorkingDir, githubToken);
 
