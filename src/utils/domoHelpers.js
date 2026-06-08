@@ -24,10 +24,12 @@ async function ensureDomoCliInstalled() {
   }
 }
 
+const DOMO_PROFILE = 'ci';
+
 async function authenticateWithDomo(domoToken, domoInstance) {
   core.info('🔐 Authenticating with Domo...');
   const instanceName = extractInstanceName(domoInstance);
-  await exec.exec('domo', ['auth', 'login', instanceName, '--token', domoToken]);
+  await exec.exec('domo', ['auth', 'login', instanceName, '--token', domoToken, '--profile', DOMO_PROFILE]);
   core.info('✅ Successfully authenticated with Domo');
 }
 
@@ -171,7 +173,7 @@ async function handleNewDesign(designId, workingDirectory, githubToken) {
 async function publishApp(publishDir, domoInstance, workingDirectory, githubToken) {
   core.info('📤 Publishing app to Domo...');
 
-  const args = ['app', 'publish', '--go'];
+  const args = ['app', 'publish', '--profile', DOMO_PROFILE];
   if (publishDir && publishDir !== '.') {
     args.push('--build-dir', publishDir);
   }
