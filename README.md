@@ -382,7 +382,7 @@ See **[docs/cicd-user-setup.md](docs/cicd-user-setup.md)** for the full step-by-
 1. Creating a Domo CICD service account with the right role
 2. Generating a developer token
 3. Adding `DOMO_TOKEN` and `DOMO_INSTANCE` to GitHub
-4. Enabling workflow permissions for the design-id PR
+4. Enabling **"Allow GitHub Actions to create and approve pull requests"** in repo Settings → Actions → General
 5. Adding the workflow YAML to your repo
 
 ### Manifest

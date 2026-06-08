@@ -36,10 +36,9 @@
 
 **Settings → Actions → General → Workflow permissions:**
 
-1. Set to **"Read and write permissions"**
-2. Check **"Allow GitHub Actions to create and approve pull requests"**
+Check **"Allow GitHub Actions to create and approve pull requests"**
 
-> Both of these must be set or the action will publish successfully but fail to open the design-id PR, falling back to a Job Summary warning instead.
+> Without this the action still publishes and surfaces the id in the Job Summary — it just can't open the PR automatically.
 
 ---
 
