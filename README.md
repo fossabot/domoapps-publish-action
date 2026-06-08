@@ -23,7 +23,6 @@ A GitHub Action for deploying Domo Custom Apps to a Domo instance using the [new
 - [Outputs](#outputs)
 - [How it works](#how-it-works)
 - [Setup](#setup)
-- [Migrating from v2](#migrating-from-v2)
 - [Troubleshooting](#troubleshooting)
 - [License](#license)
 
@@ -415,30 +414,6 @@ For React/Vite apps, place `manifest.json` in `public/` so the build copies it i
 | `proxyId` | ❌ | Required if using AppDB collections |
 | `mapping` | ❌ | Array of `{ alias, dataSetId, fields }` for dataset mappings |
 | `collections` | ❌ | Array of AppDB collection schemas |
-
----
-
-## Migrating from v2
-
-v3/v4 reframes `working-directory` to mean the **source** directory. The new `publish-dir` input names the build output. In v2, the action used `working-directory` for both — which meant if you set it to `./build`, your build command tried to run from there (no `package.json`). If you left it at `.`, the publish step uploaded the entire repo (including `docs/`, `node_modules/`, etc.).
-
-```diff
-- uses: DomoApps/domoapps-publish-action@v2
-+ uses: DomoApps/domoapps-publish-action@v4.0.0
-  with:
-    domo-token: ${{ secrets.DOMO_TOKEN }}
-    domo-instance: ${{ vars.DOMO_INSTANCE }}
-    build-command: npm run build
--   working-directory: ./build
-+   publish-dir: ./build
-```
-
-If you don't run a build (flat ProCode app), no change is needed — defaults still publish from the repo root.
-
-### Also fixed in v3/v4
-
-- **Each deploy no longer creates a new design.** v2 invoked `domo publish --build-dir <dir>`, which resolved the manifest against the caller's CWD (typically `public/manifest.json` with no `id`), creating a new app on every run. v3 passes `--build-dir` to the new Domo CLI correctly, so the manifest your build emitted is what gets published.
-- **`./build/build` resolution bug** (the old action's `changeDirectory` + `--build-dir` interaction) is gone.
 
 ---
 
