@@ -35,7 +35,11 @@
 | `DOMO_INSTANCE` | e.g. `domo-yourcompany.domo.com` | Variable |
 
 **Settings → Actions → General → Workflow permissions:**
-Check **"Allow GitHub Actions to create and approve pull requests"**
+
+1. Set to **"Read and write permissions"**
+2. Check **"Allow GitHub Actions to create and approve pull requests"**
+
+> Both of these must be set or the action will publish successfully but fail to open the design-id PR, falling back to a Job Summary warning instead.
 
 ---
 

@@ -383,6 +383,17 @@ No extra setup steps needed — the action installs pnpm or yarn globally if det
 2. **Admin → Security → Access Tokens → Generate Access Token**
 3. Save it as a GitHub secret named `DOMO_TOKEN`
 
+### 2. Enable PR creation in GitHub
+
+For the action to open a PR with the design id on first publish:
+
+1. Go to your repo's **Settings → Actions → General → Workflow permissions**
+2. Select **"Read and write permissions"**
+3. Check **"Allow GitHub Actions to create and approve pull requests"**
+4. Save
+
+> Without this, the action still publishes and surfaces the id in the Job Summary — it just can't open the PR automatically.
+
 ### 2. Configure your app
 
 Your `publish-dir` must contain a valid `manifest.json` after the build. Minimal example:
