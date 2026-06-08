@@ -8,8 +8,18 @@ const exec = require('@actions/exec');
 const github = require('@actions/github');
 const fs = require('fs');
 
+const mockGetRef = jest.fn().mockResolvedValue({ data: { object: { sha: 'abc123' } } });
+const mockCreateRef = jest.fn().mockResolvedValue({});
+const mockGetContent = jest.fn().mockResolvedValue({ data: { sha: 'fileSha' } });
+const mockCreateOrUpdateFile = jest.fn().mockResolvedValue({});
 const mockCreatePR = jest.fn().mockResolvedValue({ data: { html_url: 'https://github.com/org/repo/pull/1' } });
-github.getOctokit = jest.fn().mockReturnValue({ rest: { pulls: { create: mockCreatePR } } });
+github.getOctokit = jest.fn().mockReturnValue({
+  rest: {
+    git: { getRef: mockGetRef, createRef: mockCreateRef },
+    repos: { getContent: mockGetContent, createOrUpdateFileContents: mockCreateOrUpdateFile },
+    pulls: { create: mockCreatePR },
+  },
+});
 
 // core.summary chains — set up once here, reset in beforeEach
 const mockSummary = {
@@ -337,19 +347,17 @@ describe('Domo Publish Action', () => {
     test('opens a PR when github-token provided and git succeeds', async () => {
       existsSyncSpy.mockImplementation((p) => p === path.join('/workspace', 'manifest.json'));
       process.env.GITHUB_REPOSITORY = 'org/repo';
-      process.env.GITHUB_SERVER_URL = 'https://github.com';
 
       await publishApp('./dist', 'https://company.domo.com', '/workspace', 'gh-token-123');
 
-      expect(exec.exec).toHaveBeenCalledWith('git', ['checkout', '-b', 'chore/domo-design-id-aaaaaaaa']);
-      expect(exec.exec).toHaveBeenCalledWith('git', ['add', path.join('/workspace', 'manifest.json')]);
-      expect(exec.exec).toHaveBeenCalledWith('git', ['commit', '-m', 'chore: add Domo design id to manifest.json']);
-      expect(exec.exec).toHaveBeenCalledWith('git', ['push', 'origin', 'chore/domo-design-id-aaaaaaaa']);
+      expect(mockCreateRef).toHaveBeenCalledWith(expect.objectContaining({
+        owner: 'org', repo: 'repo', ref: 'refs/heads/chore/domo-design-id-aaaaaaaa',
+      }));
+      expect(mockCreateOrUpdateFile).toHaveBeenCalledWith(expect.objectContaining({
+        owner: 'org', repo: 'repo', branch: 'chore/domo-design-id-aaaaaaaa',
+      }));
       expect(mockCreatePR).toHaveBeenCalledWith(expect.objectContaining({
-        owner: 'org',
-        repo: 'repo',
-        head: 'chore/domo-design-id-aaaaaaaa',
-        base: 'main',
+        owner: 'org', repo: 'repo', head: 'chore/domo-design-id-aaaaaaaa', base: 'main',
       }));
     });
 
@@ -366,7 +374,7 @@ describe('Domo Publish Action', () => {
     test('falls back gracefully when PR creation fails', async () => {
       existsSyncSpy.mockImplementation((p) => p === path.join('/workspace', 'manifest.json'));
       process.env.GITHUB_REPOSITORY = 'org/repo';
-      exec.exec.mockRejectedValue(new Error('permission denied'));
+      mockGetRef.mockRejectedValueOnce(new Error('API error'));
 
       await expect(
         publishApp('./dist', 'https://company.domo.com', '/workspace', 'gh-token-123'),
@@ -375,26 +383,14 @@ describe('Domo Publish Action', () => {
       expect(core.warning).toHaveBeenCalledWith(expect.stringContaining('Could not open PR'));
     });
 
-    test('cleans up git extraheader even when a git command inside try fails', async () => {
+    test('no git exec calls when opening PR via API', async () => {
       existsSyncSpy.mockImplementation((p) => p === path.join('/workspace', 'manifest.json'));
       process.env.GITHUB_REPOSITORY = 'org/repo';
-      process.env.GITHUB_SERVER_URL = 'https://github.com';
-
-      exec.exec
-        .mockResolvedValueOnce(0)  // git config extraheader (before try)
-        .mockResolvedValueOnce(0)  // git config user.name
-        .mockResolvedValueOnce(0)  // git config user.email
-        .mockResolvedValueOnce(0)  // git checkout -b
-        .mockResolvedValueOnce(0)  // git add
-        .mockResolvedValueOnce(0)  // git commit
-        .mockRejectedValueOnce(new Error('push failed')); // git push → triggers finally
 
       await publishApp('./dist', 'https://company.domo.com', '/workspace', 'gh-token-123');
 
-      const unsetCall = exec.exec.mock.calls.find(
-        ([cmd, args]) => cmd === 'git' && args.includes('--unset'),
-      );
-      expect(unsetCall).toBeDefined();
+      const gitCalls = exec.exec.mock.calls.filter(([cmd]) => cmd === 'git');
+      expect(gitCalls).toHaveLength(0);
     });
   });
 });
