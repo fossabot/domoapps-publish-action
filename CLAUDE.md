@@ -11,7 +11,7 @@ GitHub Action that deploys Domo Custom Apps to a Domo instance using the new [Do
 - `npm run build` — Build with @vercel/ncc (compiles `src/index.js` → `dist/index.js`)
 - `npm run lint` — ESLint on source files
 - `npm test` — Jest tests (`__tests__/`)
-- CI uses yarn (`yarn install --frozen-lockfile`); local dev uses npm
+- CI and local dev both use npm (`npm ci` in CI, `npm install` locally)
 
 **Critical**: After any code change, run `npm run build` to regenerate `dist/index.js`. This is what GitHub Actions actually executes (per `action.yml` `main: 'dist/index.js'`).
 
