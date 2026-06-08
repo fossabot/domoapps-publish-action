@@ -9,9 +9,9 @@
 3. Assign a role with: **View DomoApps**, **Create DomoApps**, **Manage DomoApps**
 4. Sign in once to activate the account
 
-![Role Example](../images/deployment-role.png)
+![Role Example](/images/deployment-role.png)
 
-> SSO orgs: provision the account through your identity provider first.
+> **SSO orgs:** The CICD account must be exempt from SSO or have password-based login enabled so it can generate access tokens. Work with your IdP admin to add a service account exception.
 
 ---
 
@@ -21,7 +21,7 @@
 2. **Admin → Security → Access Tokens → Generate Access Token**
 3. Name it `github-actions-publish`, set an expiry, copy it immediately
 
-![Access Token](../images/access-token.png)
+![Access Token](/images/access-token.png)
 
 ---
 
@@ -29,9 +29,9 @@
 
 **Settings → Secrets and variables → Actions:**
 
-| Name | Value | Type |
-|---|---|---|
-| `DOMO_TOKEN` | Developer token from Step 2 | Secret |
+| Name            | Value                            | Type     |
+| --------------- | -------------------------------- | -------- |
+| `DOMO_TOKEN`    | Developer token from Step 2      | Secret   |
 | `DOMO_INSTANCE` | e.g. `domo-yourcompany.domo.com` | Variable |
 
 **Settings → Actions → General → Workflow permissions:**
@@ -59,7 +59,7 @@ permissions:
   pull-requests: write
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 jobs:
   deploy:
@@ -88,7 +88,7 @@ permissions:
   pull-requests: write
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 jobs:
   deploy:

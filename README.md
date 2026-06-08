@@ -72,9 +72,9 @@ jobs:
           publish-dir: ./build
 ```
 
----
+> **Node 24 note:** `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24` is required until the Actions runner defaults to Node 24 (expected mid-June 2026). Once that ships, remove the `env:` block.
 
-## Examples
+---
 
 ### React / Vite app (recommended pattern)
 
@@ -130,24 +130,7 @@ Defaults handle this — `working-directory: .` and `publish-dir` falls back to 
     publish-dir: ./build
 ```
 
-Or split into a dedicated checks step _before_ this one — failures block the deploy:
-
-```yaml
-- run: npm ci # only needed because the steps below run before the action's auto-install
-
-- name: Lint & test
-  run: |
-    npm run lint
-    npm test -- --watchAll=false
-
-- name: Build & deploy
-  uses: DomoApps/domoapps-publish-action@v4.0.0
-  with:
-    domo-token: ${{ secrets.DOMO_TOKEN }}
-    domo-instance: ${{ vars.DOMO_INSTANCE }}
-    build-command: npm run build
-    publish-dir: ./build
-```
+Alternatively, run lint/test as a prior step in the job — any failure blocks the deploy automatically. That pattern requires a manual `npm ci` in the earlier step since the action hasn't installed dependencies yet.
 
 ### With per-environment manifest overrides (`@domoinc/da`)
 
@@ -234,6 +217,13 @@ on:
   push:
     branches: [main, qa, develop]
 
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -245,17 +235,18 @@ jobs:
         run: |
           case "${{ github.ref_name }}" in
             main)    echo "name=prod" >> $GITHUB_OUTPUT
-                     echo "instance=https://yourcompany.domo.com" >> $GITHUB_OUTPUT ;;
+                     echo "instance=yourcompany.domo.com" >> $GITHUB_OUTPUT ;;
             qa)      echo "name=qa"   >> $GITHUB_OUTPUT
-                     echo "instance=https://yourcompany-qa.domo.com" >> $GITHUB_OUTPUT ;;
+                     echo "instance=yourcompany-qa.domo.com" >> $GITHUB_OUTPUT ;;
             develop) echo "name=dev"  >> $GITHUB_OUTPUT
-                     echo "instance=https://yourcompany-dev.domo.com" >> $GITHUB_OUTPUT ;;
+                     echo "instance=yourcompany-dev.domo.com" >> $GITHUB_OUTPUT ;;
           esac
 
       - uses: DomoApps/domoapps-publish-action@v4.0.0
         with:
           domo-token: ${{ secrets[format('DOMO_TOKEN_{0}', steps.env.outputs.name)] }}
           domo-instance: ${{ steps.env.outputs.instance }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           build-command: npm run build:${{ steps.env.outputs.name }}
           publish-dir: ./build
 ```
@@ -312,7 +303,7 @@ on:
 
 ### pnpm / yarn
 
-The action auto-detects your package manager from the lockfile and runs the install for you. For pnpm you still need to make the `pnpm` binary available on the runner:
+The action auto-detects your package manager from the lockfile and installs it globally if not already on the runner. No extra setup step is needed:
 
 ```yaml
 # pnpm
@@ -343,8 +334,8 @@ The action auto-detects your package manager from the lockfile and runs the inst
 | Input               | Required | Default                       | Description                                                                                                                                                                                                                                               |
 | ------------------- | :------: | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `domo-token`        |    ✅    | —                             | Domo API token for authentication. Store as a GitHub secret.                                                                                                                                                                                              |
-| `domo-instance`     |    ✅    | —                             | Domo instance URL, e.g. `https://your-company.domo.com`.                                                                                                                                                                                                  |
-| `github-token`      |    ❌    | —                             | GitHub token used to commit the updated `manifest.json` when a new design is created. Pass `secrets.GITHUB_TOKEN`. Requires `permissions: contents: write` on the workflow. Without it the action still publishes and surfaces the id in the Job Summary. |
+| `domo-instance`     |    ✅    | —                             | Domo instance hostname, e.g. `your-company.domo.com`. The `https://` prefix is accepted but stripped automatically.                                                                                                                       |
+| `github-token`      |    ❌    | —                             | GitHub token used to open a PR adding the design id to `manifest.json` when a new design is created. Pass `secrets.GITHUB_TOKEN`. Requires `permissions: contents: write` and `pull-requests: write`. Without it the action still publishes and surfaces the id in the Job Summary. |
 | `working-directory` |    ❌    | `.`                           | Source directory. Where dependencies install and `build-command` runs.                                                                                                                                                                                    |
 | `build-command`     |    ❌    | —                             | Optional shell command, run inside `working-directory`. Chain multiple steps with `&&`.                                                                                                                                                                   |
 | `publish-dir`       |    ❌    | (matches `working-directory`) | Built artifact to upload. Resolved **relative to `working-directory`**. Set to your build output folder.                                                                                                                                                  |
@@ -369,9 +360,20 @@ The action auto-detects your package manager from the lockfile and runs the inst
 4. **Authenticate**: `domo auth login <instance> --token <token>`.
 5. **Build**: change to `working-directory` and run `build-command` (if provided).
 6. **Publish**: `domo app publish [--build-dir <publish-dir>]` from `working-directory`.
-7. **First publish only**: if a new design is created, write the `id` to the source `manifest.json` and open a PR against `main`.
+7. **First publish only**: if a new design is created, opens a PR to persist the design id (see below).
 
-No extra setup steps needed — the action installs pnpm or yarn globally if detected from your lockfile and not already on the runner.
+### First deploy
+
+When `manifest.json` has no `id` field (first publish), the action:
+
+1. Publishes — Domo creates a new design and returns its UUID.
+2. Writes the `id` to your source `manifest.json`.
+3. Opens a PR (`chore/domo-design-id-{8chars}`) against `main`.
+4. **You merge the PR** — all future deployments then update the same design.
+
+Without `github-token`, the action still publishes successfully; the design id appears in the Job Summary for you to add manually.
+
+> See [docs/cicd-user-setup.md](docs/cicd-user-setup.md#first-deploy) and the [first-time setup flowchart](docs/first-time-setup.md) for the full picture.
 
 ---
 
@@ -433,7 +435,7 @@ v3/v4 reframes `working-directory` to mean the **source** directory. The new `pu
 
 If you don't run a build (flat ProCode app), no change is needed — defaults still publish from the repo root.
 
-### Also fixed in v3
+### Also fixed in v3/v4
 
 - **Each deploy no longer creates a new design.** v2 invoked `domo publish --build-dir <dir>`, which resolved the manifest against the caller's CWD (typically `public/manifest.json` with no `id`), creating a new app on every run. v3 passes `--build-dir` to the new Domo CLI correctly, so the manifest your build emitted is what gets published.
 - **`./build/build` resolution bug** (the old action's `changeDirectory` + `--build-dir` interaction) is gone.
@@ -445,12 +447,13 @@ If you don't run a build (flat ProCode app), no change is needed — defaults st
 | Symptom                                                 | Likely cause                                                                                                                    | Fix                                                                                                                                                                                                                                                                                                                                                                        |
 | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Manifest not found`                                    | `publish-dir` doesn't contain `manifest.json` after build                                                                       | Ensure your build copies `manifest.json` into the publish output (e.g. via Vite's `public/` folder). Verify locally: `ls $(your-build-dir)/manifest.json`                                                                                                                                                                                                                  |
-| `Authentication failed`                                 | Bad / expired token, or wrong instance URL                                                                                      | Regenerate token in Domo admin. Ensure `domo-instance` includes the `https://` scheme.                                                                                                                                                                                                                                                                                     |
+| `Authentication failed`                                 | Bad / expired token, or wrong instance URL                                                                                      | Regenerate the token in Domo admin. The `domo-instance` value can be a bare hostname (e.g. `your-company.domo.com`) or include `https://` — the action strips the scheme automatically.                                                                                                                                                                                      |
 | Each deploy creates a new app                           | `manifest.json` inside `publish-dir` has no `id`, or its `id` doesn't exist on the target instance                              | On first deploy, the action writes the new `design-id` back to your source `manifest.json` and commits it automatically (requires `github-token`). Without `github-token`, check the Job Summary after the first run for the id and add it manually. If using `da apply-manifest` for per-env overrides, confirm `manifestOverrides.json` has the right `id` for that env. |
 | Repo files leak into the published app                  | Using v2 without an isolated `working-directory`, or upgraded to v3 but didn't set `publish-dir`                                | Set `publish-dir` to your build output folder.                                                                                                                                                                                                                                                                                                                             |
 | `ENXIO: no such device or address, open '/dev/tty'`     | `da apply-manifest` called without an environment argument — falls back to an interactive prompt, which fails in CI with no TTY | Pass the environment name directly: `da apply-manifest production` (not bare `da apply-manifest`). The `[id]` argument is required in non-interactive environments.                                                                                                                                                                                                        |
 | `sh: 1: da: not found` (or other CLI not on PATH in CI) | `@domoinc/da` is installed globally locally but not in CI's clean install                                                       | Add `@domoinc/da` to `devDependencies` — it's required for `da apply-manifest` to work in CI. `npm ci` / `pnpm install` will then put the binary in `node_modules/.bin` where scripts can find it.                                                                                                                                                                         |
 | AppDB calls fail at runtime                             | Missing `proxyId` in `manifest.json`                                                                                            | After first publish with `collections`, copy `proxyId` from `build/manifest.json`.                                                                                                                                                                                                                                                                                         |
+| First deploy opened a PR — now what?                    | Expected behavior on first publish when manifest has no `id`                                                                     | Merge the PR before the next push. Future deploys will update the same design instead of creating another.                                                                                                                                                                                                                                                                  |
 
 ### Debug logs
 
