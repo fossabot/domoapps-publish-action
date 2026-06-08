@@ -100,6 +100,14 @@ describe('Domo Publish Action', () => {
       expect(core.setFailed).not.toHaveBeenCalled();
     });
 
+    test('accepts domorig.io instances', () => {
+      expect(validateInputs('token-123', 'https://company.domorig.io')).toBe(true);
+    });
+
+    test('accepts domotech.io instances', () => {
+      expect(validateInputs('token-123', 'https://company.domotech.io')).toBe(true);
+    });
+
     test('accepts bare hostname without https prefix', () => {
       expect(validateInputs('token-123', 'company.domo.com')).toBe(true);
     });

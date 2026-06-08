@@ -5,6 +5,8 @@ const core = require('@actions/core');
  * @param {string} domoToken - The Domo API token
  * @param {string} domoInstance - The Domo instance URL
  */
+const VALID_DOMO_DOMAINS = ['.domo.com', '.domorig.io', '.domotech.io'];
+
 function validateInputs(domoToken, domoInstance) {
   if (!domoToken) {
     core.setFailed('Domo token is required for authentication.');
@@ -20,7 +22,7 @@ function validateInputs(domoToken, domoInstance) {
     const url = new URL(
       domoInstance.startsWith('http') ? domoInstance : `https://${domoInstance}`
     );
-    if (!url.hostname.endsWith('.domo.com')) {
+    if (!VALID_DOMO_DOMAINS.some((d) => url.hostname.endsWith(d))) {
       core.setFailed('Invalid Domo instance URL. Must be a valid Domo instance.');
       return false;
     }
