@@ -377,59 +377,42 @@ No extra setup steps needed — the action installs pnpm or yarn globally if det
 
 ## Setup
 
-### 1. Create a Domo developer token
+See **[docs/cicd-user-setup.md](docs/cicd-user-setup.md)** for the full step-by-step guide covering:
 
-1. Log in to your Domo instance as the CICD service account
-2. **Admin → Security → Access Tokens → Generate Access Token**
-3. Save it as a GitHub secret named `DOMO_TOKEN`
+1. Creating a Domo CICD service account with the right role
+2. Generating a developer token
+3. Adding `DOMO_TOKEN` and `DOMO_INSTANCE` to GitHub
+4. Enabling workflow permissions for the design-id PR
+5. Adding the workflow YAML to your repo
 
-### 2. Enable PR creation in GitHub
+### Manifest
 
-For the action to open a PR with the design id on first publish:
-
-1. Go to your repo's **Settings → Actions → General → Workflow permissions**
-2. Select **"Read and write permissions"**
-3. Check **"Allow GitHub Actions to create and approve pull requests"**
-4. Save
-
-> Without this, the action still publishes and surfaces the id in the Job Summary — it just can't open the PR automatically.
-
-### 2. Configure your app
-
-Your `publish-dir` must contain a valid `manifest.json` after the build. Minimal example:
+Your `publish-dir` must contain a valid `manifest.json` after the build:
 
 ```json
 {
   "name": "my-app",
   "version": "1.0.0",
   "size": { "width": 5, "height": 3 },
-  "fullpage": true,
-  "id": "f46a7a19-9237-1234-1234-ef453e181614",
-  "mapping": [
-    {
-      "alias": "Sales",
-      "dataSetId": "a918ca2b-1234-42ec-1234-a71a2e1f9b43",
-      "fields": []
-    }
-  ]
+  "fullpage": true
 }
 ```
 
-For React/Vite apps, place `manifest.json` in `public/` so the build copies it into `publish-dir`.
+For React/Vite apps, place `manifest.json` in `public/` so the build copies it into `publish-dir`. The `id` field is written automatically on first deploy via the PR flow.
 
 #### Manifest fields
 
-| Field         | Required | Description                                                                                                                                                                                           |
-| ------------- | :------: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`        |    ✅    | Display name of your app                                                                                                                                                                              |
-| `version`     |    ✅    | Semantic version (e.g. `"1.0.0"`)                                                                                                                                                                     |
-| `size.width`  |    ✅    | Grid width (1–12)                                                                                                                                                                                     |
-| `size.height` |    ✅    | Grid height (1–12)                                                                                                                                                                                    |
-| `fullpage`    |    ❌    | If `true`, app takes full page                                                                                                                                                                        |
-| `id`          |    ❌    | App UUID. On first publish the action writes this back to your source `manifest.json` automatically (when `github-token` is provided) — or surfaces it in the Job Summary so you can add it manually. |
-| `proxyId`     |    ❌    | Required if using AppDB collections                                                                                                                                                                   |
-| `mapping`     |    ❌    | Array of `{ alias, dataSetId, fields }` for dataset mappings                                                                                                                                          |
-| `collections` |    ❌    | Array of AppDB collection schemas (STRING-only columns)                                                                                                                                               |
+| Field | Required | Description |
+|---|:---:|---|
+| `name` | ✅ | Display name of your app |
+| `version` | ✅ | Semantic version (e.g. `"1.0.0"`) |
+| `size.width` | ✅ | Grid width (1–12) |
+| `size.height` | ✅ | Grid height (1–12) |
+| `fullpage` | ❌ | If `true`, app takes full page |
+| `id` | ❌ | Design UUID — written automatically on first deploy |
+| `proxyId` | ❌ | Required if using AppDB collections |
+| `mapping` | ❌ | Array of `{ alias, dataSetId, fields }` for dataset mappings |
+| `collections` | ❌ | Array of AppDB collection schemas |
 
 ---
 
