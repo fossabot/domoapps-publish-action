@@ -17,9 +17,23 @@ function detectPackageManager() {
   return 'npm'; // Default to npm
 }
 
-/**
- * Ensures the appropriate package manager is installed
- */
+// Read the packageManager field from package.json (e.g. "pnpm@9.15.0") or default to pnpm@9
+function getPnpmVersion() {
+  try {
+    if (fs.existsSync('package.json')) {
+      const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+      const pm = pkg.packageManager;
+      if (pm && pm.startsWith('pnpm@')) {
+        return pm.split('@')[1];
+      }
+    }
+  } catch {
+    // fall through to default
+  }
+  return '9';
+}
+
+
 async function ensurePackageManager() {
   try {
     const packageManager = detectPackageManager();
@@ -31,7 +45,8 @@ async function ensurePackageManager() {
         core.info('✅ pnpm is already available');
       } catch (error) {
         core.info('📦 Installing pnpm...');
-        await exec.exec('npm', ['install', '-g', 'pnpm']);
+        const pnpmVersion = getPnpmVersion();
+        await exec.exec('npm', ['install', '-g', `pnpm@${pnpmVersion}`]);
         core.info('✅ pnpm installed successfully');
       }
     } else if (packageManager === 'yarn') {
