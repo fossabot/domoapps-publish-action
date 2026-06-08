@@ -40,8 +40,6 @@ A GitHub Action for deploying Domo Custom Apps to a Domo instance using the [new
 - 🆔 On first deploy, opens a PR to write the design id back to your source `manifest.json`
 - 📊 Outputs `deployment-status`, `app-url`, and `design-id` for downstream steps
 
-> **You don't need a separate install step.** The action runs it for you. Add your own only if pre-build steps (lint, test) need `node_modules` before the action runs.
-
 ---
 
 ## Quick start
