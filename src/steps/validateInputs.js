@@ -6,15 +6,26 @@ const core = require('@actions/core');
  * @param {string} domoInstance - The Domo instance URL
  */
 function validateInputs(domoToken, domoInstance) {
-  // Validate Domo instance URL
-  if (!domoInstance || !domoInstance.includes('.domo.com')) {
+  if (!domoToken) {
+    core.setFailed('Domo token is required for authentication.');
+    return false;
+  }
+
+  if (!domoInstance) {
     core.setFailed('Invalid Domo instance URL. Must be a valid Domo instance.');
     return false;
   }
 
-  // Validate Domo token
-  if (!domoToken) {
-    core.setFailed('Domo token is required for authentication.');
+  try {
+    const url = new URL(
+      domoInstance.startsWith('http') ? domoInstance : `https://${domoInstance}`
+    );
+    if (!url.hostname.endsWith('.domo.com')) {
+      core.setFailed('Invalid Domo instance URL. Must be a valid Domo instance.');
+      return false;
+    }
+  } catch {
+    core.setFailed('Invalid Domo instance URL. Must be a valid Domo instance.');
     return false;
   }
 

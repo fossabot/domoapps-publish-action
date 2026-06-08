@@ -72,16 +72,12 @@ describe('Domo Publish Action', () => {
 
   describe('validateInputs', () => {
     test('returns true for valid inputs', () => {
-      expect(validateInputs('token-123', 'https://company.domo.com')).toBe(
-        true,
-      );
+      expect(validateInputs('token-123', 'https://company.domo.com')).toBe(true);
     });
 
     test('fails when token is empty', () => {
       expect(validateInputs('', 'https://company.domo.com')).toBe(false);
-      expect(core.setFailed).toHaveBeenCalledWith(
-        'Domo token is required for authentication.',
-      );
+      expect(core.setFailed).toHaveBeenCalledWith('Domo token is required for authentication.');
     });
 
     test('fails when instance URL is empty', () => {
@@ -89,14 +85,23 @@ describe('Domo Publish Action', () => {
       expect(core.setFailed).toHaveBeenCalled();
     });
 
-    test('fails when instance URL does not contain .domo.com', () => {
+    test('fails when instance URL does not end with .domo.com', () => {
       expect(validateInputs('token-123', 'https://not-domo.com')).toBe(false);
       expect(core.setFailed).toHaveBeenCalled();
     });
 
-    test('accepts URLs that contain .domo.com', () => {
+    test('rejects subdomain spoofing (evil-domo.com.attacker.com)', () => {
+      expect(validateInputs('token-123', 'https://evil-domo.com.attacker.com')).toBe(false);
+      expect(core.setFailed).toHaveBeenCalled();
+    });
+
+    test('accepts valid subdomain of .domo.com', () => {
       expect(validateInputs('token-123', 'https://test.domo.com')).toBe(true);
       expect(core.setFailed).not.toHaveBeenCalled();
+    });
+
+    test('accepts bare hostname without https prefix', () => {
+      expect(validateInputs('token-123', 'company.domo.com')).toBe(true);
     });
   });
 
