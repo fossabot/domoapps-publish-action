@@ -211,16 +211,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-
       - uses: DomoApps/domoapps-publish-action@v4.0.0
         with:
           domo-token: ${{ secrets.DOMO_TOKEN }}
@@ -331,10 +321,6 @@ The action auto-detects your package manager from the lockfile and runs the inst
 ```yaml
 # pnpm
 - uses: actions/checkout@v4
-- uses: pnpm/action-setup@v4
-  with: { version: 9 }  # match your project's pnpm version
-- uses: actions/setup-node@v4
-  with: { node-version: '24', cache: 'pnpm' }
 - uses: DomoApps/domoapps-publish-action@v4.0.0
   with:
     domo-token: ${{ secrets.DOMO_TOKEN }}
@@ -346,8 +332,6 @@ The action auto-detects your package manager from the lockfile and runs the inst
 ```yaml
 # yarn
 - uses: actions/checkout@v4
-- uses: actions/setup-node@v4
-  with: { node-version: '24', cache: 'yarn' }
 - uses: DomoApps/domoapps-publish-action@v4.0.0
   with:
     domo-token: ${{ secrets.DOMO_TOKEN }}
@@ -391,7 +375,7 @@ The action auto-detects your package manager from the lockfile and runs the inst
 6. **Publish**: `domo app publish [--build-dir <publish-dir>]` from `working-directory`.
 7. **First publish only**: if a new design is created, write the `id` to the source `manifest.json` and open a PR against `main`.
 
-For pnpm you need `pnpm/action-setup` before the action. For npm/yarn, `actions/setup-node` is sufficient.
+No extra setup steps needed — the action installs pnpm or yarn globally if detected from your lockfile and not already on the runner.
 
 ---
 
