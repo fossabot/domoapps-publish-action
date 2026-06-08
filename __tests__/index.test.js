@@ -207,7 +207,7 @@ describe('Domo Publish Action', () => {
 
     test('does not trigger new-design flow when output is a normal republish', async () => {
       exec.getExecOutput.mockResolvedValue({
-        stdout: '✓ Publishing my-app to company.domo.com\n✓ Uploaded: index.html',
+        stdout: 'Published my-app to company.domo.com\nView in asset library: https://company.domo.com/assetlibrary?designId=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
       });
       await publishApp('./dist', 'https://company.domo.com', '/workspace');
       expect(core.setOutput).not.toHaveBeenCalledWith('design-id', expect.any(String));
@@ -215,7 +215,7 @@ describe('Domo Publish Action', () => {
 
     test('does not trigger new-design flow when uuid is missing from output', async () => {
       exec.getExecOutput.mockResolvedValue({
-        stdout: '✓ New design created on company.domo.com\nDesign can be found at https://company.domo.com/assetlibrary',
+        stdout: 'Created design \nPublished my-app to company.domo.com',
       });
       await publishApp('./dist', 'https://company.domo.com', '/workspace');
       expect(core.setOutput).not.toHaveBeenCalledWith('design-id', expect.any(String));
@@ -266,8 +266,9 @@ describe('Domo Publish Action', () => {
     const path = require('path');
 
     const NEW_DESIGN_STDOUT =
-      '✓ New design created on company.domo.com\n' +
-      'Design can be found at https://company.domo.com/assetlibrary?designId=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+      'Created design aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\n' +
+      'Published Test App to company.domo.com\n' +
+      'View in asset library: https://company.domo.com/assetlibrary?designId=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
 
     let existsSyncSpy;
     let readFileSyncSpy;

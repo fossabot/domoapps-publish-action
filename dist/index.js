@@ -25829,7 +25829,8 @@ async function authenticateWithDomo(domoToken, domoInstance) {
   core.info('🔐 Authenticating with Domo...');
   const instanceName = extractInstanceName(domoInstance);
   await exec.exec('domo', ['auth', 'login', instanceName, '--token', domoToken]);
-  core.info('✅ Successfully authenticated with Domo');
+  const { stdout } = await exec.getExecOutput('domo', ['auth', 'whoami']);
+  core.info(`✅ Authenticated as: ${stdout.trim()}`);
 }
 
 // Search order mirrors ryuu's findManifest lookup
@@ -25983,8 +25984,8 @@ async function publishApp(publishDir, domoInstance, workingDirectory, githubToke
   core.setOutput('deployment-status', 'success');
   core.setOutput('app-url', `${domoInstance}/app/${publishDir}`);
 
-  if (stdout.includes('New design created') || stdout.includes('design created')) {
-    const match = stdout.match(/designId=([a-f0-9-]{36})/);
+  if (stdout.includes('Created design')) {
+    const match = stdout.match(/Created design ([a-f0-9-]{36})/);
     if (match) {
       await handleNewDesign(match[1], workingDirectory, githubToken);
     }
