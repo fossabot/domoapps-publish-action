@@ -1,8 +1,8 @@
 # Domo Publish Action
 
-A GitHub Action for deploying Domo Custom Apps to a Domo instance using the [`ryuu`](https://www.npmjs.com/package/ryuu) npm package (which provides the `domo` CLI).
+A GitHub Action for deploying Domo Custom Apps to a Domo instance using the [new Domo CLI](https://app.domo.com/domo-cli/install.sh).
 
-**v3** ships first-class support for **React, Vite, and CRA** projects: the action cleanly separates the *source directory* (where your build runs) from the *publish directory* (the artifact `ryuu` uploads). If you've ever had `docs/`, `node_modules/`, or other repo-root junk leak into your published app — that's what this fixes.
+**v3** cleanly separates the *source directory* (where your build runs) from the *publish directory* (the artifact uploaded to Domo). Supports React/Vite, ProCode, and pnpm monorepo layouts.
 
 ---
 
@@ -12,7 +12,6 @@ A GitHub Action for deploying Domo Custom Apps to a Domo instance using the [`ry
 - [Quick start](#quick-start)
 - [Examples](#examples)
   - [React / Vite app](#react--vite-app-recommended-pattern)
-  - [Create React App (CRA)](#create-react-app-cra)
   - [ProCode / flat app (no build)](#procode--flat-app-no-build)
   - [With pre-build checks (lint, test, type-check)](#with-pre-build-checks-lint-test-type-check)
   - [With per-environment manifest overrides (`@domoinc/da`)](#with-per-environment-manifest-overrides-domoinc-da)
@@ -35,7 +34,7 @@ A GitHub Action for deploying Domo Custom Apps to a Domo instance using the [`ry
 - 🔐 Token-based authentication with Domo
 - 📦 Auto-detects npm / yarn / pnpm from your lockfile and installs dependencies
 - 🛠 Auto-installs the [Domo CLI](https://app.domo.com/domo-cli/install.sh) on the runner
-- ⚛️ React / Vite / CRA friendly — separate `working-directory` (source) and `publish-dir` (build output)
+- ⚛️ React / Vite / pnpm friendly — separate `working-directory` (source) and `publish-dir` (build output)
 - 🔨 Optional build step run inside your source directory
 - 📤 Publishes only the build artifact, not the whole repo
 - 🆔 On first deploy, opens a PR to write the design id back to your source `manifest.json`
@@ -105,28 +104,6 @@ Source lives in a subfolder (`./app`):
 ```
 
 > `publish-dir` is resolved **relative to `working-directory`**, so `./dist` above means `./app/dist`.
-
-### Create React App (CRA)
-
-```yaml
-- uses: DomoApps/domoapps-publish-action@v3.0.0
-  with:
-    domo-token: ${{ secrets.DOMO_TOKEN }}
-    domo-instance: ${{ vars.DOMO_INSTANCE }}
-    build-command: npm run build
-    publish-dir: ./build
-```
-
-> **CRA + `da apply-manifest`** — if your CRA template uses `da apply-manifest` in its build (`prestart` / `prebuild` / `build:dev` etc.), add `@domoinc/da` to your `devDependencies`. The CLI is typically installed globally on developer machines, so locally it works; in CI's clean install it isn't on PATH and the build fails with `sh: 1: da: not found`. Pinning it as a devDependency puts the binary in `node_modules/.bin` where npm scripts can find it.
->
-> ```jsonc
-> // package.json
-> {
->   "devDependencies": {
->     "@domoinc/da": "^2.3.0"
->   }
-> }
-> ```
 
 ### ProCode / flat app (no build)
 
