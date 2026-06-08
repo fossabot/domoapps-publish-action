@@ -10,6 +10,9 @@ inputs:
   domo-instance:
     description: "Domo instance URL (e.g., https://your-company.domo.com)"
     required: true
+  github-token:
+    description: "GitHub token used to commit the updated manifest.json when a new design is created. Pass secrets.GITHUB_TOKEN. Requires permissions: contents: write on the workflow."
+    required: false
   build-command:
     description: "Optional build command to run before deployment (runs inside working-directory)"
     required: false
@@ -26,6 +29,8 @@ outputs:
     description: "Status of the deployment"
   app-url:
     description: "URL of the deployed app"
+  design-id:
+    description: "Domo design ID — only set when a new design is created for the first time"
 runs:
   using: "node24"
   main: "dist/index.js"

@@ -6,6 +6,15 @@ const core = require('@actions/core');
 const exec = require('@actions/exec');
 const fs = require('fs');
 
+// core.summary chains — set up once here, reset in beforeEach
+const mockSummary = {
+  addHeading: jest.fn().mockReturnThis(),
+  addRaw: jest.fn().mockReturnThis(),
+  addBreak: jest.fn().mockReturnThis(),
+  addCodeBlock: jest.fn().mockReturnThis(),
+  write: jest.fn().mockResolvedValue(undefined),
+};
+
 const { extractInstanceName } = require('../src/utils/domoHelpers');
 const { validateInputs } = require('../src/steps/validateInputs');
 const { changeDirectory } = require('../src/steps/changeDirectory');
@@ -15,6 +24,9 @@ describe('Domo Publish Action', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     exec.exec.mockResolvedValue(0);
+    exec.getExecOutput.mockResolvedValue({ stdout: '', stderr: '' });
+    core.summary = mockSummary;
+    Object.values(mockSummary).forEach((fn) => fn.mockClear());
   });
 
   describe('extractInstanceName', () => {
@@ -183,21 +195,204 @@ describe('Domo Publish Action', () => {
   describe('Domo Publish', () => {
     const { publishApp } = require('../src/utils/domoHelpers');
 
-    test('calls domo publish with no flags (relies on CWD)', async () => {
-      await publishApp('./dist', 'https://company.domo.com');
-      expect(exec.exec).toHaveBeenCalledWith('domo', ['publish']);
+    test('calls domo publish via getExecOutput (no flags, relies on CWD)', async () => {
+      await publishApp('./dist', 'https://company.domo.com', '/workspace');
+      expect(exec.getExecOutput).toHaveBeenCalledWith('domo', ['publish']);
     });
 
     test('sets success outputs', async () => {
-      await publishApp('./dist', 'https://company.domo.com');
-      expect(core.setOutput).toHaveBeenCalledWith(
-        'deployment-status',
-        'success',
+      await publishApp('./dist', 'https://company.domo.com', '/workspace');
+      expect(core.setOutput).toHaveBeenCalledWith('deployment-status', 'success');
+      expect(core.setOutput).toHaveBeenCalledWith('app-url', 'https://company.domo.com/app/./dist');
+    });
+
+    test('does not trigger new-design flow when output is a normal republish', async () => {
+      exec.getExecOutput.mockResolvedValue({
+        stdout: '✓ Publishing my-app to company.domo.com\n✓ Uploaded: index.html',
+      });
+      await publishApp('./dist', 'https://company.domo.com', '/workspace');
+      expect(core.setOutput).not.toHaveBeenCalledWith(
+        'design-id',
+        expect.any(String),
       );
-      expect(core.setOutput).toHaveBeenCalledWith(
-        'app-url',
-        'https://company.domo.com/app/./dist',
+    });
+
+    test('does not trigger new-design flow when uuid is missing from output', async () => {
+      exec.getExecOutput.mockResolvedValue({
+        stdout: '✓ New design created on company.domo.com\nDesign can be found at https://company.domo.com/assetlibrary',
+      });
+      await publishApp('./dist', 'https://company.domo.com', '/workspace');
+      expect(core.setOutput).not.toHaveBeenCalledWith(
+        'design-id',
+        expect.any(String),
       );
+    });
+  });
+
+  describe('findSourceManifest', () => {
+    const { findSourceManifest } = require('../src/utils/domoHelpers');
+    const path = require('path');
+    let existsSyncSpy;
+
+    beforeEach(() => {
+      existsSyncSpy = jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+    });
+
+    afterEach(() => {
+      existsSyncSpy.mockRestore();
+    });
+
+    test('returns root manifest.json when it exists', () => {
+      existsSyncSpy.mockImplementation((p) => p === path.join('/workspace', 'manifest.json'));
+      expect(findSourceManifest('/workspace')).toBe(path.join('/workspace', 'manifest.json'));
+    });
+
+    test('falls back to public/manifest.json', () => {
+      existsSyncSpy.mockImplementation((p) => p === path.join('/workspace', 'public', 'manifest.json'));
+      expect(findSourceManifest('/workspace')).toBe(path.join('/workspace', 'public', 'manifest.json'));
+    });
+
+    test('falls back to src/manifest.json last', () => {
+      existsSyncSpy.mockImplementation((p) => p === path.join('/workspace', 'src', 'manifest.json'));
+      expect(findSourceManifest('/workspace')).toBe(path.join('/workspace', 'src', 'manifest.json'));
+    });
+
+    test('returns null when no manifest found', () => {
+      existsSyncSpy.mockReturnValue(false);
+      expect(findSourceManifest('/workspace')).toBeNull();
+    });
+
+    test('prefers root manifest.json over public/ when both exist', () => {
+      existsSyncSpy.mockReturnValue(true);
+      expect(findSourceManifest('/workspace')).toBe(path.join('/workspace', 'manifest.json'));
+    });
+  });
+
+  describe('handleNewDesign — via publishApp', () => {
+    const { publishApp } = require('../src/utils/domoHelpers');
+    const path = require('path');
+
+    const NEW_DESIGN_STDOUT =
+      '✓ New design created on company.domo.com\n' +
+      'Design can be found at https://company.domo.com/assetlibrary?designId=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+
+    let existsSyncSpy;
+    let readFileSyncSpy;
+    let writeFileSyncSpy;
+
+    beforeEach(() => {
+      exec.getExecOutput.mockResolvedValue({ stdout: NEW_DESIGN_STDOUT });
+      existsSyncSpy = jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+      readFileSyncSpy = jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify({ name: 'my-app' }));
+      writeFileSyncSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      existsSyncSpy.mockRestore();
+      readFileSyncSpy.mockRestore();
+      writeFileSyncSpy.mockRestore();
+      delete process.env.GITHUB_REPOSITORY;
+      delete process.env.GITHUB_SERVER_URL;
+    });
+
+    test('sets design-id output when new design detected', async () => {
+      await publishApp('./dist', 'https://company.domo.com', '/workspace');
+      expect(core.setOutput).toHaveBeenCalledWith(
+        'design-id',
+        'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+      );
+    });
+
+    test('writes id to manifest when manifest found, no token', async () => {
+      existsSyncSpy.mockImplementation((p) => p === path.join('/workspace', 'manifest.json'));
+
+      await publishApp('./dist', 'https://company.domo.com', '/workspace');
+
+      expect(writeFileSyncSpy).toHaveBeenCalledWith(
+        path.join('/workspace', 'manifest.json'),
+        expect.stringContaining('"id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"'),
+      );
+      expect(exec.exec).not.toHaveBeenCalledWith('git', expect.arrayContaining(['commit']), expect.anything());
+    });
+
+    test('emits warning and summary when no token provided', async () => {
+      existsSyncSpy.mockImplementation((p) => p === path.join('/workspace', 'manifest.json'));
+
+      await publishApp('./dist', 'https://company.domo.com', '/workspace');
+
+      expect(core.warning).toHaveBeenCalledWith(expect.stringContaining('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'));
+      expect(mockSummary.write).toHaveBeenCalled();
+    });
+
+    test('skips file write when manifest not found, still emits output and warning', async () => {
+      existsSyncSpy.mockReturnValue(false);
+
+      await publishApp('./dist', 'https://company.domo.com', '/workspace');
+
+      expect(writeFileSyncSpy).not.toHaveBeenCalled();
+      expect(core.setOutput).toHaveBeenCalledWith('design-id', 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee');
+      expect(core.warning).toHaveBeenCalled();
+      expect(mockSummary.write).toHaveBeenCalled();
+    });
+
+    test('commits manifest when github-token provided and commit succeeds', async () => {
+      existsSyncSpy.mockImplementation((p) => p === path.join('/workspace', 'manifest.json'));
+      process.env.GITHUB_REPOSITORY = 'org/repo';
+      process.env.GITHUB_SERVER_URL = 'https://github.com';
+
+      await publishApp('./dist', 'https://company.domo.com', '/workspace', 'gh-token-123');
+
+      expect(exec.exec).toHaveBeenCalledWith('git', ['add', path.join('/workspace', 'manifest.json')]);
+      expect(exec.exec).toHaveBeenCalledWith('git', [
+        'commit',
+        '-m',
+        'chore: add Domo design id to manifest.json [skip ci]',
+      ]);
+      expect(exec.exec).toHaveBeenCalledWith('git', ['push', 'origin', 'HEAD']);
+    });
+
+    test('summary mentions auto-commit when commit succeeds', async () => {
+      existsSyncSpy.mockImplementation((p) => p === path.join('/workspace', 'manifest.json'));
+      process.env.GITHUB_REPOSITORY = 'org/repo';
+
+      await publishApp('./dist', 'https://company.domo.com', '/workspace', 'gh-token-123');
+
+      const rawCall = mockSummary.addRaw.mock.calls.flat().join(' ');
+      expect(rawCall).toMatch(/committed automatically/i);
+    });
+
+    test('falls back gracefully when git commit fails', async () => {
+      existsSyncSpy.mockImplementation((p) => p === path.join('/workspace', 'manifest.json'));
+      process.env.GITHUB_REPOSITORY = 'org/repo';
+      exec.exec.mockRejectedValue(new Error('permission denied'));
+
+      await expect(
+        publishApp('./dist', 'https://company.domo.com', '/workspace', 'gh-token-123'),
+      ).resolves.not.toThrow();
+
+      expect(core.warning).toHaveBeenCalledWith(expect.stringContaining('Auto-commit failed'));
+    });
+
+    test('cleans up git extraheader even when a git command inside try fails', async () => {
+      existsSyncSpy.mockImplementation((p) => p === path.join('/workspace', 'manifest.json'));
+      process.env.GITHUB_REPOSITORY = 'org/repo';
+      process.env.GITHUB_SERVER_URL = 'https://github.com';
+
+      // Header setup (call 0) succeeds; git push (call 5) fails; everything else succeeds
+      exec.exec
+        .mockResolvedValueOnce(0)  // git config extraheader (before try)
+        .mockResolvedValueOnce(0)  // git config user.name
+        .mockResolvedValueOnce(0)  // git config user.email
+        .mockResolvedValueOnce(0)  // git add
+        .mockResolvedValueOnce(0)  // git commit
+        .mockRejectedValueOnce(new Error('push failed')); // git push → triggers finally
+
+      await publishApp('./dist', 'https://company.domo.com', '/workspace', 'gh-token-123');
+
+      const unsetCall = exec.exec.mock.calls.find(
+        ([cmd, args]) => cmd === 'git' && args.includes('--unset'),
+      );
+      expect(unsetCall).toBeDefined();
     });
   });
 });

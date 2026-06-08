@@ -1,4 +1,5 @@
 const core = require('@actions/core');
+const path = require('path');
 const { validateInputs } = require('./steps/validateInputs');
 const { setupEnvironment } = require('./steps/setupEnvironment');
 const { authenticateDomo } = require('./steps/authenticateDomo');
@@ -13,10 +14,13 @@ async function run() {
     const buildCommand = core.getInput('build-command', { required: false });
     const workingDirectory =
       core.getInput('working-directory', { required: false }) || '.';
+    const absoluteWorkingDir = path.resolve(workingDirectory);
     const publishDirInput = core.getInput('publish-dir', { required: false });
     const publishDir = publishDirInput && publishDirInput.trim() !== ''
       ? publishDirInput
       : '.';
+
+    const githubToken = core.getInput('github-token', { required: false }) || '';
 
     if (!validateInputs(domoToken, domoInstance)) {
       core.setOutput('deployment-status', 'failed');
@@ -40,7 +44,7 @@ async function run() {
       changeDirectory(publishDir);
     }
 
-    await publishAppStep(publishDir, domoInstance);
+    await publishAppStep(publishDir, domoInstance, absoluteWorkingDir, githubToken);
 
     core.info('🎉 Deployment completed successfully!');
   } catch (error) {
