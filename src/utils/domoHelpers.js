@@ -33,7 +33,7 @@ async function authenticateWithDomo(domoToken, domoInstance) {
   core.info(`✅ Authenticated as: ${stdout.trim()}`);
 }
 
-// Search order mirrors ryuu's findManifest lookup
+// Search order mirrors the new Domo CLI's manifest lookup
 const MANIFEST_SEARCH_PATHS = [
   'manifest.json',
   path.join('public', 'manifest.json'),
