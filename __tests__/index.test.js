@@ -178,10 +178,10 @@ describe('Domo Publish Action', () => {
   describe('Domo Authentication', () => {
     const { authenticateWithDomo } = require('../src/utils/domoHelpers');
 
-    test('calls domo auth login with instance, token, and ci profile', async () => {
+    test('calls domo auth login with instance and token', async () => {
       await authenticateWithDomo('my-token', 'https://company.domo.com');
       expect(exec.exec).toHaveBeenCalledWith('domo', [
-        'auth', 'login', 'company.domo.com', '--token', 'my-token', '--profile', 'ci',
+        'auth', 'login', 'company.domo.com', '--token', 'my-token',
       ]);
     });
   });
@@ -189,14 +189,14 @@ describe('Domo Publish Action', () => {
   describe('Domo Publish', () => {
     const { publishApp } = require('../src/utils/domoHelpers');
 
-    test('calls domo app publish --profile ci for root publish dir', async () => {
+    test('calls domo app publish for root publish dir', async () => {
       await publishApp('.', 'https://company.domo.com', '/workspace');
-      expect(exec.getExecOutput).toHaveBeenCalledWith('domo', ['app', 'publish', '--profile', 'ci']);
+      expect(exec.getExecOutput).toHaveBeenCalledWith('domo', ['app', 'publish']);
     });
 
     test('passes --build-dir when publishDir is not "."', async () => {
       await publishApp('./dist', 'https://company.domo.com', '/workspace');
-      expect(exec.getExecOutput).toHaveBeenCalledWith('domo', ['app', 'publish', '--profile', 'ci', '--build-dir', './dist']);
+      expect(exec.getExecOutput).toHaveBeenCalledWith('domo', ['app', 'publish', '--build-dir', './dist']);
     });
 
     test('sets success outputs', async () => {
