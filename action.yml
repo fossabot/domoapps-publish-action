@@ -11,7 +11,7 @@ inputs:
     description: "Domo instance URL (e.g., https://your-company.domo.com)"
     required: true
   github-token:
-    description: "GitHub token used to commit the updated manifest.json when a new design is created. Pass secrets.GITHUB_TOKEN. Requires permissions: contents: write on the workflow."
+    description: "GitHub token used to open a PR adding the design id to manifest.json when a new design is created. Pass secrets.GITHUB_TOKEN. Requires permissions: contents: write and pull-requests: write on the workflow."
     required: false
   build-command:
     description: "Optional build command to run before deployment (runs inside working-directory)"

@@ -78,7 +78,8 @@ In your GitHub repository:
 
 ```yaml
 permissions:
-  contents: write # required for auto-committing the design id
+  contents: write      # required to push the design-id branch
+  pull-requests: write # required to open the PR against main
 
 jobs:
   deploy:

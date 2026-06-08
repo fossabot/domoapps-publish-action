@@ -1,10 +1,15 @@
 jest.mock('@actions/core');
 jest.mock('@actions/exec');
 jest.mock('@actions/io');
+jest.mock('@actions/github');
 
 const core = require('@actions/core');
 const exec = require('@actions/exec');
+const github = require('@actions/github');
 const fs = require('fs');
+
+const mockCreatePR = jest.fn().mockResolvedValue({ data: { html_url: 'https://github.com/org/repo/pull/1' } });
+github.getOctokit = jest.fn().mockReturnValue({ rest: { pulls: { create: mockCreatePR } } });
 
 // core.summary chains — set up once here, reset in beforeEach
 const mockSummary = {
@@ -329,33 +334,36 @@ describe('Domo Publish Action', () => {
       expect(mockSummary.write).toHaveBeenCalled();
     });
 
-    test('commits manifest when github-token provided and commit succeeds', async () => {
+    test('opens a PR when github-token provided and git succeeds', async () => {
       existsSyncSpy.mockImplementation((p) => p === path.join('/workspace', 'manifest.json'));
       process.env.GITHUB_REPOSITORY = 'org/repo';
       process.env.GITHUB_SERVER_URL = 'https://github.com';
 
       await publishApp('./dist', 'https://company.domo.com', '/workspace', 'gh-token-123');
 
+      expect(exec.exec).toHaveBeenCalledWith('git', ['checkout', '-b', 'chore/add-domo-design-id']);
       expect(exec.exec).toHaveBeenCalledWith('git', ['add', path.join('/workspace', 'manifest.json')]);
-      expect(exec.exec).toHaveBeenCalledWith('git', [
-        'commit',
-        '-m',
-        'chore: add Domo design id to manifest.json [skip ci]',
-      ]);
-      expect(exec.exec).toHaveBeenCalledWith('git', ['push', 'origin', 'HEAD']);
+      expect(exec.exec).toHaveBeenCalledWith('git', ['commit', '-m', 'chore: add Domo design id to manifest.json']);
+      expect(exec.exec).toHaveBeenCalledWith('git', ['push', 'origin', 'chore/add-domo-design-id']);
+      expect(mockCreatePR).toHaveBeenCalledWith(expect.objectContaining({
+        owner: 'org',
+        repo: 'repo',
+        head: 'chore/add-domo-design-id',
+        base: 'main',
+      }));
     });
 
-    test('summary mentions auto-commit when commit succeeds', async () => {
+    test('summary mentions PR when opened successfully', async () => {
       existsSyncSpy.mockImplementation((p) => p === path.join('/workspace', 'manifest.json'));
       process.env.GITHUB_REPOSITORY = 'org/repo';
 
       await publishApp('./dist', 'https://company.domo.com', '/workspace', 'gh-token-123');
 
       const rawCall = mockSummary.addRaw.mock.calls.flat().join(' ');
-      expect(rawCall).toMatch(/committed automatically/i);
+      expect(rawCall).toMatch(/PR has been opened/i);
     });
 
-    test('falls back gracefully when git commit fails', async () => {
+    test('falls back gracefully when PR creation fails', async () => {
       existsSyncSpy.mockImplementation((p) => p === path.join('/workspace', 'manifest.json'));
       process.env.GITHUB_REPOSITORY = 'org/repo';
       exec.exec.mockRejectedValue(new Error('permission denied'));
@@ -364,7 +372,7 @@ describe('Domo Publish Action', () => {
         publishApp('./dist', 'https://company.domo.com', '/workspace', 'gh-token-123'),
       ).resolves.not.toThrow();
 
-      expect(core.warning).toHaveBeenCalledWith(expect.stringContaining('Auto-commit failed'));
+      expect(core.warning).toHaveBeenCalledWith(expect.stringContaining('Could not open PR'));
     });
 
     test('cleans up git extraheader even when a git command inside try fails', async () => {
@@ -372,11 +380,11 @@ describe('Domo Publish Action', () => {
       process.env.GITHUB_REPOSITORY = 'org/repo';
       process.env.GITHUB_SERVER_URL = 'https://github.com';
 
-      // Header setup (call 0) succeeds; git push (call 5) fails; everything else succeeds
       exec.exec
         .mockResolvedValueOnce(0)  // git config extraheader (before try)
         .mockResolvedValueOnce(0)  // git config user.name
         .mockResolvedValueOnce(0)  // git config user.email
+        .mockResolvedValueOnce(0)  // git checkout -b
         .mockResolvedValueOnce(0)  // git add
         .mockResolvedValueOnce(0)  // git commit
         .mockRejectedValueOnce(new Error('push failed')); // git push → triggers finally
