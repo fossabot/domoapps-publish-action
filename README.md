@@ -178,7 +178,7 @@ Or split into a dedicated checks step *before* this one — failures block the d
 
 ### With per-environment manifest overrides (`@domoinc/da`)
 
-Domo Apps templates ship with `da apply-manifest` (from the [`@domoinc/da`](https://www.npmjs.com/package/@domoinc/da) CLI) to swap dataset IDs / app IDs per environment. Add `@domoinc/da` to your `devDependencies` so it's available in CI, then chain it into your build:
+Domo Apps templates use `da apply-manifest` (from the [`@domoinc/da`](https://www.npmjs.com/package/@domoinc/da) CLI) to swap dataset IDs / app IDs per environment. **`@domoinc/da` must be in your `devDependencies`** — it's typically installed globally on developer machines, so locally it works without this, but CI's clean install won't have it on PATH and your build will fail with `sh: 1: da: not found`.
 
 ```jsonc
 // package.json
@@ -203,7 +203,7 @@ Domo Apps templates ship with `da apply-manifest` (from the [`@domoinc/da`](http
 
 #### Full workflow — pnpm + `da apply-manifest`
 
-A complete example using pnpm, pre-build checks, and `da apply-manifest` for environment-specific manifests. This is the recommended pattern for Domo Apps template projects:
+A complete example using pnpm, pre-build checks, and `da apply-manifest`. **Requires `@domoinc/da` in `devDependencies`** (see above).
 
 ```jsonc
 // package.json — one build script per target environment
@@ -505,7 +505,7 @@ If you don't run a build (flat ProCode app), no change is needed — defaults st
 | `Authentication failed` | Bad / expired token, or wrong instance URL | Regenerate token in Domo admin. Ensure `domo-instance` includes the `https://` scheme. |
 | Each deploy creates a new app | `manifest.json` inside `publish-dir` has no `id`, or its `id` doesn't exist on the target instance | On first deploy, the action writes the new `design-id` back to your source `manifest.json` and commits it automatically (requires `github-token`). Without `github-token`, check the Job Summary after the first run for the id and add it manually. If using `da apply-manifest` for per-env overrides, confirm `manifestOverrides.json` has the right `id` for that env. |
 | Repo files leak into the published app | Using v2 without an isolated `working-directory`, or upgraded to v3 but didn't set `publish-dir` | Set `publish-dir` to your build output folder. |
-| `sh: 1: da: not found` (or other CLI not on PATH in CI) | The CLI is installed globally locally but not in CI's clean install | Add the CLI as a `devDependency` (e.g. `@domoinc/da`) so `npm ci` puts it in `node_modules/.bin`. |
+| `sh: 1: da: not found` (or other CLI not on PATH in CI) | `@domoinc/da` is installed globally locally but not in CI's clean install | Add `@domoinc/da` to `devDependencies` — it's required for `da apply-manifest` to work in CI. `npm ci` / `pnpm install` will then put the binary in `node_modules/.bin` where scripts can find it. |
 | AppDB calls fail at runtime | Missing `proxyId` in `manifest.json` | After first publish with `collections`, copy `proxyId` from `build/manifest.json`. |
 
 ### Debug logs
